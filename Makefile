@@ -4,7 +4,12 @@ SOURCE_DIR  := src
 INCLUDE_DIR := -Iincludes
 OUTPUT_DIR  := build
 
-CFLAGS := $(INCLUDE_DIR) -Wall
+# Debug Options
+# -DDEBUG_MEMORY  ->    Display all memory accesses
+# -DDISASSEMBLE   ->    Display all commands executed
+DEBUG_FLAGS := -DDISASSEMBLE
+
+CFLAGS := $(INCLUDE_DIR) -Wall $(DEBUG_FLAGS)
 LFLAGS := 
 
 CFILES := $(wildcard $(SOURCE_DIR)/*.c)
