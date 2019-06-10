@@ -24,13 +24,23 @@ $0000-$00FF	Restart and Interrupt Vectors
 */
 #define INTERNAL_MEMORY_SIZE 0xFFFF
 
+struct memory_region {
+	unsigned short base;
+	unsigned short bound;
+	unsigned char  (*read8)(unsigned short);
+	unsigned short (*read16)(unsigned short);
+	void  (*write8)(unsigned short, char);
+	void  (*write16)(unsigned short, short);
+};
+
+void memory_init();
 void memory_reset();
 
-void * memory_dump();
 void memory_load(void * mem, unsigned short start, unsigned short size);
+void * memory_dump();
 
-char  memory_read8(unsigned short address);
-short memory_read16(unsigned short address);
+unsigned char  memory_read8(unsigned short address);
+unsigned short memory_read16(unsigned short address);
 
 void memory_write8(unsigned short address, char val);
 void memory_write16(unsigned short address, short val);

@@ -2,15 +2,23 @@
 #include "memory.h"
 
 /**
+Global Variables
+*/
+unsigned char cpu_running;
+
+/**
 Static Functions
 */
 static unsigned char parse_opcode(unsigned char opcode);
 static unsigned char parse_prefixed_opcode(unsigned char opcode);
 
+static void do_cp(unsigned char val);
+
 /**
 Static Variables
 */
 static struct registers cpu_registers;
+static char * interrupt_register;
 
 #ifdef DISASSEMBLE
 static char disassembly[255];
@@ -19,6 +27,10 @@ static char disassembly[255];
 /**
 Functions
 */
+void cpu_init() {
+	cpu_reset();
+}
+
 void cpu_reset() {
 	// Reset all registers
 	cpu_registers = (struct registers){
@@ -29,9 +41,11 @@ void cpu_reset() {
 		.PC = 0,
 		.SP = 0
 	};
+	
+	cpu_running = 1;
 }
 
-void dump_regs() {
+void cpu_dump_regs() {
 	printf("A:  %02x\n", cpu_registers.A);
 	printf("B:  %02x\n", cpu_registers.B);
 	printf("C:  %02x\n", cpu_registers.C);
@@ -48,19 +62,25 @@ void dump_regs() {
 }
 
 unsigned char cpu_step() {
-	char byte;
+	unsigned char byte;
 #ifdef DISASSEMBLE
 	unsigned char cycles;
 	unsigned short pc_start;
 	
 	pc_start = cpu_registers.PC;
 #endif
+	if(cpu_registers.PC == 0xe9) {
+		cpu_running = 0;
+		return 0;
+	}
 	byte = memory_read8(cpu_registers.PC++);
 #ifdef DISASSEMBLE
 	memset(disassembly, 0, sizeof(disassembly));
 	
 	cycles = parse_opcode(byte);
 	printf("$%04x %s\n", pc_start, disassembly);
+	
+	if(!cycles) exit(0);
 	
 	return cycles;
 #else
@@ -70,8 +90,8 @@ unsigned char cpu_step() {
 
 static unsigned char parse_opcode(unsigned char opcode) {
 	unsigned char cycles;
-	char tmp_c;
-	short tmp_s;
+	unsigned char tmp_c;
+	unsigned short tmp_s;
 	
 	switch(opcode)
 	{
@@ -214,7 +234,7 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			tmp_c = memory_read8(cpu_registers.PC);
 			cpu_registers.PC++;
 			
-			cpu_registers.PC += tmp_c;
+			cpu_registers.PC += (signed char)tmp_c;
 			
 			cycles = 8;
 #ifdef DISASSEMBLE
@@ -262,7 +282,7 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			
 			// Jump if Z-flag is reset
 			if(!GET_BIT(cpu_registers.FLAG, Z_FLAG))
-				cpu_registers.PC += tmp_c;
+				cpu_registers.PC += (signed char)tmp_c;
 			
 			cycles = 8;
 #ifdef DISASSEMBLE
@@ -326,7 +346,7 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			
 			// Jump if Z-flag is set
 			if(GET_BIT(cpu_registers.FLAG, Z_FLAG))
-				cpu_registers.PC += tmp_c;
+				cpu_registers.PC += (signed char)tmp_c;
 			
 			cycles = 8;
 #ifdef DISASSEMBLE
@@ -366,7 +386,7 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			
 			// Jump if C-flag is reset
 			if(!GET_BIT(cpu_registers.FLAG, C_FLAG))
-				cpu_registers.PC += tmp_c;
+				cpu_registers.PC += (signed char)tmp_c;
 			
 			cycles = 8;
 #ifdef DISASSEMBLE
@@ -424,7 +444,7 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			
 			// Jump if C-flag is set
 			if(GET_BIT(cpu_registers.FLAG, C_FLAG))
-				cpu_registers.PC += tmp_c;
+				cpu_registers.PC += (signed char)tmp_c;
 			
 			cycles = 8;
 #ifdef DISASSEMBLE
@@ -575,6 +595,29 @@ static unsigned char parse_opcode(unsigned char opcode) {
 #endif
 			break;
 		
+		case 0x90:
+			// SUB B
+			// Algorithm from: https://github.com/drhelius/Gearboy/blob/4867b81c27d9b1144f077a20c6e2003ba21bd9a2/src/Processor_inline.h
+			tmp_c = cpu_registers.A - cpu_registers.B;
+			cpu_registers.A = cpu_registers.A ^ cpu_registers.B ^ tmp_c;
+			
+			// Z_FLAG and N_FLAG
+			cpu_registers.FLAG = ((tmp_c ? 1 : 0) << Z_FLAG) | (1 << N_FLAG);
+			
+			// C_FLAG
+			if(tmp_c & 0x100)
+				cpu_registers.FLAG |= (1 << C_FLAG);
+			
+			// H_FLAG
+			if(tmp_c & 0x10)
+				cpu_registers.FLAG |= (1 << H_FLAG);
+					
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SUB B");
+#endif			
+			break;
+		
 		case 0xA8:
 			// XOR B
 			cpu_registers.A ^= cpu_registers.B;
@@ -645,6 +688,16 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			cycles = 4;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "XOR A");
+#endif
+			break;
+		
+		case 0xBE:
+			// CP (HL)
+			tmp_c = memory_read8(cpu_registers.HL);
+			do_cp(tmp_c);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "CP (HL)");
 #endif
 			break;
 		
@@ -734,7 +787,7 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			tmp_c = memory_read8(cpu_registers.PC);
 			cpu_registers.PC++;
 			
-			cpu_registers.A = tmp_c;
+			cpu_registers.A = memory_read8(0xFF00 + tmp_c);
 			
 			cycles = 12;
 #ifdef DISASSEMBLE
@@ -743,32 +796,11 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			break;
 		case 0xFE:
 			// CP n
-			/**
-			Z - Set if result is zero. (Set if A = n.)
-			N - Set.
-			H - Set if no borrow from bit 4.
-			C - Set for no borrow. (Set if A < n.)
-			*/
 			tmp_c = memory_read8(cpu_registers.PC++);
+			do_cp(tmp_c);
 #ifdef DISASSEMBLE
-			sprintf(disassembly, "CP $%02x", tmp_c);
-#endif
-			
-			// Set half-carry flag
-			cpu_registers.FLAG = (!(((cpu_registers.A & 0xF) - (tmp_c)) & 0xF)) << H_FLAG;
-			cpu_registers.FLAG |= 1 << N_FLAG;
-			
-			/**
-			Remember:
-				tmp_c is unsigned
-				If tmp_c is signed, 129 wraps and makes neg.
-			*/
-			tmp_c = cpu_registers.A - tmp_c;
-			if(tmp_c > 128)
-				cpu_registers.FLAG |= (1 << C_FLAG);
-			else if(!tmp_c)
-				cpu_registers.FLAG |= (1 << Z_FLAG);
-			
+			sprintf(disassembly, "CP $%02x (A: $%02x)", tmp_c, cpu_registers.A);
+#endif		
 			cycles = 8;
 			break;
 		
@@ -784,8 +816,8 @@ static unsigned char parse_opcode(unsigned char opcode) {
 
 static unsigned char parse_prefixed_opcode(unsigned char opcode) {
 	unsigned char cycles;
-	char tmp_c;
-	short tmp_s;
+	unsigned char tmp_c;
+	unsigned short tmp_s;
 	
 	switch(opcode)
 	{
@@ -966,4 +998,31 @@ static unsigned char parse_prefixed_opcode(unsigned char opcode) {
 	}
 	
 	return cycles;
+}
+
+/**
+	This is odd logic, so abstracted incase needed to change
+*/
+static void do_cp(unsigned char val) {
+	/**
+	Z - Set if result is zero. (Set if A = n.)
+	N - Set.
+	H - Set if no borrow from bit 4.
+	C - Set for no borrow. (Set if A < n.)
+	*/
+	
+	// Set half-carry flag
+	cpu_registers.FLAG = (!(((cpu_registers.A & 0xF) - (val)) & 0xF)) <<H_FLAG;
+	cpu_registers.FLAG |= 1 << N_FLAG;
+	
+	/**
+	Remember:
+		tmp_c is unsigned
+		If tmp_c is signed, 129 wraps and makes neg.
+	*/
+	val = cpu_registers.A - val;
+	if(val > 128)
+		cpu_registers.FLAG |= (1 << C_FLAG);
+	else if(!val)
+		cpu_registers.FLAG |= (1 << Z_FLAG);
 }

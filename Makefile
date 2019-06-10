@@ -6,6 +6,7 @@ OUTPUT_DIR  := build
 
 # Debug Options
 # -DDEBUG_MEMORY  ->    Display all memory accesses
+# -DDEBUG_LCD     ->    Display information about LCD screen
 # -DDISASSEMBLE   ->    Display all commands executed
 DEBUG_FLAGS := -DDISASSEMBLE
 

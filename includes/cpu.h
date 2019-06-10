@@ -110,6 +110,8 @@ struct registers {
 	unsigned char FLAG;
 };
 
+extern unsigned char cpu_running;
+
 void cpu_reset();
 unsigned char cpu_step();
 
