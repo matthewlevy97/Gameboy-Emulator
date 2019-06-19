@@ -8,10 +8,15 @@ OUTPUT_DIR  := build
 # -DDEBUG_MEMORY  ->    Display all memory accesses
 # -DDEBUG_LCD     ->    Display information about LCD screen
 # -DDISASSEMBLE   ->    Display all commands executed
-DEBUG_FLAGS := -DDISASSEMBLE
+DEBUG_FLAGS := -g -DDISASSEMBLE
 
-CFLAGS := $(INCLUDE_DIR) -Wall $(DEBUG_FLAGS)
-LFLAGS := 
+# Comment out to start at bootloader
+#IGNORE_BOOTLOADER := -DIGNORE_BOOTLOADER
+
+GRAPHICS_LIBRARY := -lSDL2
+
+CFLAGS := $(INCLUDE_DIR) $(DEBUG_FLAGS) $(IGNORE_BOOTLOADER) -Wall
+LFLAGS := $(GRAPHICS_LIBRARY)
 
 CFILES := $(wildcard $(SOURCE_DIR)/*.c)
 OBJS   := $(patsubst $(SOURCE_DIR)/%.c, $(OUTPUT_DIR)/%.o, $(CFILES))

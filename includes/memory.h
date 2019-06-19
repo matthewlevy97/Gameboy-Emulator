@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+
 /**
 $FFFF   	Interrupt Enable Flag
 $FF80-$FFFE	Zero Page - 127 bytes
@@ -36,7 +37,6 @@ struct memory_region {
 void memory_init();
 void memory_reset();
 
-void memory_load(void * mem, unsigned short start, unsigned short size);
 void * memory_dump();
 
 unsigned char  memory_read8(unsigned short address);

@@ -110,11 +110,26 @@ struct registers {
 	unsigned char FLAG;
 };
 
-extern unsigned char cpu_running;
+struct cpu_state {
+	unsigned char running;
+	unsigned long long total_cycles;
+	struct registers registers;
+};
 
+void cpu_init();
 void cpu_reset();
+
+struct cpu_state cpu_getState();
+void cpu_setState(struct cpu_state state);
+void cpu_printState();
+
 unsigned char cpu_step();
 
-void cpu_dump_regs();
+extern struct cpu_state cpu_state;
+
+#ifdef DISASSEMBLE
+extern char disassembly[256];
+extern short disassembly_pc;
+#endif
 
 #endif
