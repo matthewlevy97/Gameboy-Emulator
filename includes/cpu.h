@@ -121,7 +121,6 @@ void cpu_reset();
 
 struct cpu_state cpu_getState();
 void cpu_setState(struct cpu_state state);
-void cpu_printState();
 
 unsigned char cpu_step();
 

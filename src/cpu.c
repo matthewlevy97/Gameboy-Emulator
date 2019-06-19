@@ -136,17 +136,6 @@ void cpu_setState(struct cpu_state state) {
 	cpu_state = state;
 }
 
-void printState() {
-	printf("A: %02x\n", cpu_registers->A);
-	printf("B: %02x\n", cpu_registers->B);
-	printf("C: %02x\n", cpu_registers->C);
-	printf("D: %02x\n", cpu_registers->D);
-	printf("E: %02x\n", cpu_registers->E);
-	printf("F: %02x\n", cpu_registers->F);
-	printf("H: %02x\n", cpu_registers->H);
-	printf("L: %02x\n", cpu_registers->L);
-}
-
 unsigned char cpu_step() {
 	unsigned char cycles, byte;
 	
