@@ -40,12 +40,14 @@ void cpu_init() {
 	
 #ifdef IGNORE_BOOTLOADER
 	cpu_registers->PC = 0x100;
+	cpu_rom_reset();
 #endif
 }
 
 void cpu_reset() {
 	// Reset everything
 	memset(&cpu_state, 0, sizeof(struct cpu_state));
+	cpu_state.running = 1;
 }
 
 void cpu_rom_reset() {
@@ -677,7 +679,7 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			// SUB B
 			// Algorithm from: https://github.com/drhelius/Gearboy/blob/4867b81c27d9b1144f077a20c6e2003ba21bd9a2/src/Processor_inline.h
 			tmp_c = cpu_registers->A - cpu_registers->B;
-			cpu_registers->A = cpu_registers->A ^ cpu_registers->B ^ tmp_c;
+			cpu_registers->A = tmp_c;
 			
 			// Z_FLAG and N_FLAG
 			cpu_registers->FLAG = ((tmp_c ? 1 : 0) << Z_FLAG) | (1 << N_FLAG);
@@ -869,9 +871,7 @@ static unsigned char parse_opcode(unsigned char opcode) {
 		
 		case 0xF0:
 			// LD A,($FF00+n)
-			tmp_c = memory_read8(cpu_registers->PC);
-			cpu_registers->PC++;
-			
+			tmp_c = memory_read8(cpu_registers->PC++);
 			cpu_registers->A = memory_read8(0xFF00 + tmp_c);
 			
 			cycles = 12;

@@ -6,6 +6,7 @@
 Static Variables
 */
 static struct debugger_settings settings;
+static int ctrl_c;
 
 /**
 Static Functions
@@ -16,6 +17,10 @@ static void debugger_continue();
 /**
 Functions
 */
+void sig_handler(int sig) {
+	ctrl_c = 1;
+}
+
 void debugger_init() {
 	settings.number_breakpoints = 0;
 	settings.breakpoints[settings.number_breakpoints++] = 0x000;
@@ -32,7 +37,10 @@ void debugger_loop() {
 	line_size = 32;
 	line = malloc(line_size);
 	
+	signal(SIGINT, sig_handler);
 	for(;;) {
+		ctrl_c = 0;
+		
 		// Display registers
 		printf("A:  $%04x\t", cpu_state.registers.A);
 		printf("F:  $%04x\n", cpu_state.registers.F);
@@ -67,7 +75,8 @@ void debugger_loop() {
 		case 'x':
 			// eXamine memory
 			s = readNumber(++line);
-			printf("$%04x\t$%04x\n", s, ((char*)memory_dump())[s]);
+			c = ((char*)memory_dump())[(unsigned short)s];
+			printf("$%04x:\t$%04x\n", s, c);
 			break;
 		case 'b':
 			// Set a Breakpoint
@@ -105,7 +114,7 @@ static short readNumber(char * line) {
 	
 	// Remove leading whitespace
 	while((c = *line) == ' ' && c != '\0') line++;
-	printf("%s\n", line);
+	
 	// Convert to number
 	return strtol(line, NULL, 0);
 }
@@ -113,7 +122,7 @@ static short readNumber(char * line) {
 static void debugger_continue() {
 	int i;
 	
-	while(cpu_state.running) {
+	while(cpu_state.running && !ctrl_c) {
 		// Determine if we need to break out (breakpoint hit)
 		for(i = 0; i < settings.number_breakpoints; i++) {
 			if(cpu_state.registers.PC == settings.breakpoints[i])
