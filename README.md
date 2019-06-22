@@ -8,10 +8,11 @@
 	- Segment restricting (Prevent access to restricted regions)
 	- Easier checking for interrupts
 	- I/O addresses
+- Determine addresses for drawing pixels
+- Created basic debugger
+- UI for drawing of LCD screen
 
 # TODO
-- Determine addresses for drawing pixels
 - Implement interrupts
-- Build GUI for debugging
-- UI for drawing of LCD screen
-	- Single draw (When called draw everything, no interrupts, etc)
+- Finish implementing all opcode
+	- Abstract out common code

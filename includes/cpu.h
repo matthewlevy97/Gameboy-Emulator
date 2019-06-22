@@ -22,15 +22,27 @@ Z N H C 0 0 0 0
 #define C_FLAG 4
 
 /**
+PUSH and POP
+
+PUSH:
+	SP -= 2
+	(SP) = val
+
+POP:
+	val = (SP)
+	SP += 2
+*/
+
+/**
 Precomputed Flag is AND'ed with cpu_registers.FLAG
 This allows for modification of only the result based flag,
 leaving the static changes to be done compile-time
 */
-// Z - Dynamic, N - Reset, H - Reset, C - Reset
-#define FLAG_PRECOMPUTE_XOR (1 << Z_FLAG)
-
 // Z - Dynamic, N - Reset, H - Set, C - Unchanged
 #define FLAG_PRECOMPUTE_BIT ((1 << Z_FLAG) | (1 << H_FLAG) | (1 << C_FLAG))
+
+// Z - Unchanged, N - Set, H - Set, C - Unchanged
+#define FLAG_PRECOMPUTE_CPL (1 << N_FLAG | 1 << H_FLAG)
 
 /**
 For Flags not able to be precomputed
@@ -48,6 +60,12 @@ For Flags not able to be precomputed
 	(1 << N_FLAG) |\
 	((!(((value & 0xF) - 1) & 0xF)) << H_FLAG) |\
 	(1 << C_FLAG)\
+)
+
+// Z - Dynamic, N - Reset, H - Set, C - Reset
+#define FLAG_COMPUTE_AND(value) (\
+	((!value) << Z_FLAG) |\
+	(1 << H_FLAG)\
 )
 
 /**
@@ -112,6 +130,7 @@ struct registers {
 
 struct cpu_state {
 	unsigned char running;
+	unsigned char ime; /* 0 - disable interrupts, 1 - enable interrupts */
 	unsigned long long total_cycles;
 	struct registers registers;
 };

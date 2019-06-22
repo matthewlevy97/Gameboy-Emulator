@@ -11,6 +11,8 @@ struct cpu_state cpu_state;
 /**
 Static Functions
 */
+static void cpu_rom_reset();
+
 static unsigned char parse_opcode(unsigned char opcode);
 static unsigned char parse_prefixed_opcode(unsigned char opcode);
 
@@ -30,105 +32,24 @@ short disassembly_pc;
 /**
 Functions
 */
-void cpu_init() {
-	cpu_reset();
-	
+void cpu_init() {	
 	cpu_registers = &cpu_state.registers;
-	cpu_state.running = 1;
 	
 	interrupt_register = memory_dump() + 0xFFFF;
-	
-#ifdef IGNORE_BOOTLOADER
-	cpu_registers->PC = 0x100;
-	cpu_rom_reset();
-#endif
+
+	cpu_reset();
 }
 
 void cpu_reset() {
 	// Reset everything
 	memset(&cpu_state, 0, sizeof(struct cpu_state));
 	cpu_state.running = 1;
-}
 
-void cpu_rom_reset() {
-	/**
-	When loading the ROM, set the following values
+#ifdef IGNORE_BOOTLOADER
+	cpu_registers->PC = 0x100;
+	cpu_rom_reset();
+#endif
 
-	   AF=$01B0
-	   BC=$0013
-	   DE=$00D8
-	   HL=$014D
-	   Stack Pointer=$FFFE
-	   [$FF05] = $00   ; TIMA
-	   [$FF06] = $00   ; TMA
-	   [$FF07] = $00   ; TAC
-	   [$FF10] = $80   ; NR10
-	   [$FF11] = $BF   ; NR11
-	   [$FF12] = $F3   ; NR12
-	   [$FF14] = $BF   ; NR14
-	   [$FF16] = $3F   ; NR21
-	   [$FF17] = $00   ; NR22
-	   [$FF19] = $BF   ; NR24
-	   [$FF1A] = $7F   ; NR30
-	   [$FF1B] = $FF   ; NR31
-	   [$FF1C] = $9F   ; NR32
-	   [$FF1E] = $BF   ; NR33
-	   [$FF20] = $FF   ; NR41
-	   [$FF21] = $00   ; NR42
-	   [$FF22] = $00   ; NR43
-	   [$FF23] = $BF   ; NR30
-	   [$FF24] = $77   ; NR50
-	   [$FF25] = $F3   ; NR51
-	   [$FF26] = $F1-GB, $F0-SGB ; NR52
-	   [$FF40] = $91   ; LCDC
-	   [$FF42] = $00   ; SCY
-	   [$FF43] = $00   ; SCX
-	   [$FF45] = $00   ; LYC
-	   [$FF47] = $FC   ; BGP
-	   [$FF48] = $FF   ; OBP0
-	   [$FF49] = $FF   ; OBP1
-	   [$FF4A] = $00   ; WY
-	   [$FF4B] = $00   ; WX
-	   [$FFFF] = $00   ; IE
-	*/
-	
-	cpu_registers->AF = 0x01B0;
-	cpu_registers->BC = 0x0013;
-	cpu_registers->DE = 0x00D8;
-	cpu_registers->HL = 0x014D;
-	cpu_registers->SP = 0xFFFE;
-	
-	memory_write8(0xFF05, 0x00);
-	memory_write8(0xFF06, 0x00);
-	memory_write8(0xFF07, 0x00);
-	memory_write8(0xFF10, 0x80);
-	memory_write8(0xFF11, 0xBF);
-	memory_write8(0xFF12, 0xF3);	
-	memory_write8(0xFF14, 0xBF);
-	memory_write8(0xFF16, 0x3F);
-	memory_write8(0xFF17, 0x00);
-	memory_write8(0xFF19, 0xBF);
-	memory_write8(0xFF1A, 0x7F);
-	memory_write8(0xFF1B, 0xFF);
-	memory_write8(0xFF1C, 0x9F);
-	memory_write8(0xFF1E, 0xBF);
-	memory_write8(0xFF20, 0xFF);
-	memory_write8(0xFF21, 0x00);
-	memory_write8(0xFF22, 0x00);
-	memory_write8(0xFF23, 0xBF);
-	memory_write8(0xFF24, 0x77);
-	memory_write8(0xFF25, 0xF3);
-	memory_write8(0xFF26, 0x00); // TODO: This value depends on system
-	memory_write8(0xFF40, 0x91);
-	memory_write8(0xFF42, 0x00);
-	memory_write8(0xFF43, 0x00);
-	memory_write8(0xFF45, 0x00);
-	memory_write8(0xFF47, 0xFC);
-	memory_write8(0xFF48, 0xFF);
-	memory_write8(0xFF49, 0xFF);
-	memory_write8(0xFF4A, 0x00);
-	memory_write8(0xFF4B, 0x00);
-	memory_write8(0xFFFF, 0x00);
 }
 
 struct cpu_state cpu_getState() {
@@ -226,7 +147,14 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			sprintf(disassembly, "LD A, (BC)");
 #endif
 			break;
-
+		case 0x0B:
+			// DEC BC
+			cpu_registers->BC--;
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "DEC BC");
+#endif
+			break;
 		case 0x0C:
 			// INC C
 			cpu_registers->C++;
@@ -327,6 +255,14 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			cycles = 8;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "LD A, (DE)");
+#endif
+			break;
+		case 0x1B:
+			// DEC DE
+			cpu_registers->DE--;
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "DEC DE");
 #endif
 			break;
 		case 0x1C:
@@ -433,6 +369,22 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			sprintf(disassembly, "JR Z, %02d", tmp_c);
 #endif
 			break;
+		case 0x2A:
+			// LD A, (HL+)
+			cpu_registers->A = memory_read8(cpu_registers->HL++);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD A, (HL+)");
+#endif
+			break;
+		case 0x2B:
+			// DEC HL
+			cpu_registers->HL--;
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "DEC HL");
+#endif
+			break;
 		case 0x2C:
 			// INC L
 			cpu_registers->L++;
@@ -457,6 +409,15 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			cycles = 8;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "LD L, $%02x", cpu_registers->L);
+#endif
+			break;
+		case 0x2F:
+			// CPL
+			cpu_registers->A = ~cpu_registers->A;
+			cpu_registers->FLAG |= FLAG_PRECOMPUTE_CPL;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "CPL");
 #endif
 			break;
 		
@@ -518,6 +479,16 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			sprintf(disassembly, "DEC (HL)");
 #endif
 			break;
+		case 0x36:
+			// LD (HL), n
+			tmp_c = memory_read8(cpu_registers->PC++);
+			memory_write8(cpu_registers->HL, tmp_c);
+			cycles = 12;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD (HL), $%04x");
+#endif
+			break;
+
 		case 0x38:
 			// JR C, *
 			tmp_c = memory_read8(cpu_registers->PC++);
@@ -529,6 +500,14 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			cycles = 8;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "JR C, %02d", tmp_c);
+#endif
+			break;
+		case 0x3B:
+			// DEC SP
+			cpu_registers->SP--;
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "DEC SP");
 #endif
 			break;
 		case 0x3C:
@@ -675,6 +654,16 @@ static unsigned char parse_opcode(unsigned char opcode) {
 #endif
 			break;
 		
+		case 0x86:
+			// ADD A, (HL)
+			cpu_registers->A+=(signed)memory_read8(cpu_registers->HL);
+			cpu_registers->FLAG = (cpu_registers->A ? 0 : 1<<Z_FLAG);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "ADD A, (HL)");
+#endif
+			break;
+		
 		case 0x90:
 			// SUB B
 			// Algorithm from: https://github.com/drhelius/Gearboy/blob/4867b81c27d9b1144f077a20c6e2003ba21bd9a2/src/Processor_inline.h
@@ -682,7 +671,8 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			cpu_registers->A = tmp_c;
 			
 			// Z_FLAG and N_FLAG
-			cpu_registers->FLAG = ((tmp_c ? 1 : 0) << Z_FLAG) | (1 << N_FLAG);
+			cpu_registers->FLAG = ((tmp_c ? 1 : 0)<<Z_FLAG) |
+					 (1<<N_FLAG);
 			
 			// C_FLAG
 			if(tmp_c & 0x100)
@@ -698,10 +688,83 @@ static unsigned char parse_opcode(unsigned char opcode) {
 #endif			
 			break;
 		
+		case 0xA0:
+			// AND B
+			cpu_registers->A &= cpu_registers->B;
+			cpu_registers->FLAG = FLAG_COMPUTE_AND(cpu_registers->A);
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "AND B");
+#endif
+			break;
+		case 0xA1:
+			// AND C
+			cpu_registers->A &= cpu_registers->C;
+			cpu_registers->FLAG = FLAG_COMPUTE_AND(cpu_registers->A);
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "AND C");
+#endif
+			break;
+		case 0xA2:
+			// AND D
+			cpu_registers->A &= cpu_registers->D;
+			cpu_registers->FLAG = FLAG_COMPUTE_AND(cpu_registers->A);
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "AND D");
+#endif
+			break;
+		case 0xA3:
+			// AND E
+			cpu_registers->A &= cpu_registers->E;
+			cpu_registers->FLAG = FLAG_COMPUTE_AND(cpu_registers->A);
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "AND E");
+#endif
+			break;
+		case 0xA4:
+			// AND H
+			cpu_registers->A &= cpu_registers->H;
+			cpu_registers->FLAG = FLAG_COMPUTE_AND(cpu_registers->A);
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "AND H");
+#endif
+			break;
+		case 0xA5:
+			// AND L
+			cpu_registers->A &= cpu_registers->L;
+			cpu_registers->FLAG = FLAG_COMPUTE_AND(cpu_registers->A);
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "AND L");
+#endif
+			break;
+		case 0xA6:
+			// AND (HL)
+			tmp_c = memory_read8(cpu_registers->HL);
+			cpu_registers->A &= tmp_c;
+			cpu_registers->FLAG = FLAG_COMPUTE_AND(cpu_registers->A);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "AND (HL)");
+#endif
+			break;
+		case 0xA7:
+			// AND A
+			cpu_registers->A &= cpu_registers->A;
+			cpu_registers->FLAG = FLAG_COMPUTE_AND(cpu_registers->A);
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "AND A");
+#endif
+			break;
 		case 0xA8:
 			// XOR B
 			cpu_registers->A ^= cpu_registers->B;
-			cpu_registers->FLAG = (cpu_registers->A ? 0 : FLAG_PRECOMPUTE_XOR);
+			cpu_registers->FLAG = (cpu_registers->A ? 0 : 1<<Z_FLAG);
 			cycles = 4;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "XOR B");
@@ -710,7 +773,7 @@ static unsigned char parse_opcode(unsigned char opcode) {
 		case 0xA9:
 			// XOR C
 			cpu_registers->A ^= cpu_registers->C;
-			cpu_registers->FLAG = (cpu_registers->A ? 0 : FLAG_PRECOMPUTE_XOR);
+			cpu_registers->FLAG = (cpu_registers->A ? 0 : 1<<Z_FLAG);
 			cycles = 4;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "XOR C");
@@ -719,7 +782,7 @@ static unsigned char parse_opcode(unsigned char opcode) {
 		case 0xAA:
 			// XOR D
 			cpu_registers->A ^= cpu_registers->D;
-			cpu_registers->FLAG = (cpu_registers->A ? 0 : FLAG_PRECOMPUTE_XOR);
+			cpu_registers->FLAG = (cpu_registers->A ? 0 : 1<<Z_FLAG);
 			cycles = 4;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "XOR D");
@@ -728,7 +791,7 @@ static unsigned char parse_opcode(unsigned char opcode) {
 		case 0xAB:
 			// XOR E
 			cpu_registers->A ^= cpu_registers->E;
-			cpu_registers->FLAG = (cpu_registers->A ? 0 : FLAG_PRECOMPUTE_XOR);
+			cpu_registers->FLAG = (cpu_registers->A ? 0 : 1<<Z_FLAG);
 			cycles = 4;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "XOR E");
@@ -737,7 +800,7 @@ static unsigned char parse_opcode(unsigned char opcode) {
 		case 0xAC:
 			// XOR H
 			cpu_registers->A ^= cpu_registers->H;
-			cpu_registers->FLAG = (cpu_registers->A ? 0 : FLAG_PRECOMPUTE_XOR);
+			cpu_registers->FLAG = (cpu_registers->A ? 0 : 1<<Z_FLAG);
 			cycles = 4;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "XOR H");
@@ -746,7 +809,7 @@ static unsigned char parse_opcode(unsigned char opcode) {
 		case 0xAD:
 			// XOR L
 			cpu_registers->A ^= cpu_registers->L;
-			cpu_registers->FLAG = (cpu_registers->A ? 0 : FLAG_PRECOMPUTE_XOR);
+			cpu_registers->FLAG = (cpu_registers->A ? 0 : 1<<Z_FLAG);
 			cycles = 4;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "XOR L");
@@ -755,7 +818,7 @@ static unsigned char parse_opcode(unsigned char opcode) {
 		case 0xAE:
 			// XOR (HL)
 			cpu_registers->A ^= memory_read16(cpu_registers->HL);
-			cpu_registers->FLAG = (cpu_registers->A ? 0 : FLAG_PRECOMPUTE_XOR);
+			cpu_registers->FLAG = (cpu_registers->A ? 0 : 1<<Z_FLAG);
 			cycles = 8;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "XOR (HL)");
@@ -764,13 +827,93 @@ static unsigned char parse_opcode(unsigned char opcode) {
 		case 0xAF:
 			// XOR A
 			cpu_registers->A ^= cpu_registers->A;
-			cpu_registers->FLAG = (cpu_registers->A ? 0 : FLAG_PRECOMPUTE_XOR);
+			cpu_registers->FLAG = (cpu_registers->A ? 0 : 1<<Z_FLAG);
 			cycles = 4;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "XOR A");
 #endif
 			break;
 		
+		case 0xB0:
+			// OR B
+			cpu_registers->A |= cpu_registers->B;
+			cpu_registers->FLAG = (cpu_registers->A ? 0 : 1<<Z_FLAG);
+			
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "OR B");
+#endif
+			break;
+		case 0xB1:
+			// OR B
+			cpu_registers->A |= cpu_registers->B;
+			cpu_registers->FLAG = (cpu_registers->A ? 0 : 1<<Z_FLAG);
+			
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "OR B");
+#endif
+			break;
+		case 0xB2:
+			// OR D
+			cpu_registers->A |= cpu_registers->D;
+			cpu_registers->FLAG = (cpu_registers->A ? 0 : 1<<Z_FLAG);
+			
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "OR D");
+#endif
+			break;
+		case 0xB3:
+			// OR E
+			cpu_registers->A |= cpu_registers->E;
+			cpu_registers->FLAG = (cpu_registers->A ? 0 : 1<<Z_FLAG);
+			
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "OR E");
+#endif
+			break;
+		case 0xB4:
+			// OR H
+			cpu_registers->A |= cpu_registers->H;
+			cpu_registers->FLAG = (cpu_registers->A ? 0 : 1<<Z_FLAG);
+			
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "OR H");
+#endif
+			break;
+		case 0xB5:
+			// OR L
+			cpu_registers->A |= cpu_registers->L;
+			cpu_registers->FLAG = (cpu_registers->A ? 0 : 1<<Z_FLAG);
+			
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "OR L");
+#endif
+			break;
+		case 0xB6:
+			// OR (HL)
+			cpu_registers->A |= memory_read8(cpu_registers->HL);
+			cpu_registers->FLAG = (cpu_registers->A ? 0 : 1<<Z_FLAG);
+			
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "OR (HL)");
+#endif
+			break;
+		case 0xB7:
+			// OR A
+			cpu_registers->A |= cpu_registers->A;
+			cpu_registers->FLAG = (cpu_registers->A ? 0 : 1<<Z_FLAG);
+			
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "OR A");
+#endif
+			break;
 		case 0xBE:
 			// CP (HL)
 			tmp_c = memory_read8(cpu_registers->HL);
@@ -817,6 +960,16 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			sprintf(disassembly, "PUSH BC $%04x", cpu_registers->SP);
 #endif
 			break;
+		case 0xC7:
+			// RST 0x00
+			cpu_registers->SP -= 2;
+			memory_write16(cpu_registers->SP, cpu_registers->PC);
+			cpu_registers->PC = 0x00;
+			cycles = 32;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "RST $00");
+#endif
+			break;
 		case 0xCB:
 			// Prefixed opcode
 			opcode = memory_read8(cpu_registers->PC++);
@@ -838,7 +991,49 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			sprintf(disassembly, "CALL $%04x", tmp_s);
 #endif
 			break;
-		
+		case 0xCF:
+			// RST 0x08
+			cpu_registers->SP -= 2;
+			memory_write16(cpu_registers->SP, cpu_registers->PC);
+			cpu_registers->PC = 0x08;
+			cycles = 32;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "RST $08");
+#endif
+			break;
+
+
+		case 0xD7:
+			// RST 0x10
+			cpu_registers->SP -= 2;
+			memory_write16(cpu_registers->SP, cpu_registers->PC);
+			cpu_registers->PC = 0x10;
+			cycles = 32;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "RST $10");
+#endif
+			break;
+		case 0xD9:
+			// RETI
+			// POP Ret Addr
+			cpu_registers->PC = memory_read16(cpu_registers->SP);
+			cpu_registers->SP += 2;
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "RETI: $%04x", cpu_registers->PC);
+#endif
+			break;
+		case 0xDF:
+			// RST 0x18
+			cpu_registers->SP -= 2;
+			memory_write16(cpu_registers->SP, cpu_registers->PC);
+			cpu_registers->PC = 0x18;
+			cycles = 32;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "RST $18");
+#endif
+			break;
+
 		case 0xE0:
 			// LD ($FF00+n), A
 			tmp_c = memory_read8(cpu_registers->PC++);
@@ -856,6 +1051,26 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			sprintf(disassembly, "LD ($ff00 + C), A");
 #endif
 			break;
+		case 0xE6:
+			// AND #
+			tmp_c = memory_read8(cpu_registers->PC++);
+			cpu_registers->A &= tmp_c;
+			cpu_registers->FLAG = FLAG_COMPUTE_AND(cpu_registers->A);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "AND $%02x", tmp_c);
+#endif
+			break;
+		case 0xE7:
+			// RST 0x20
+			cpu_registers->SP -= 2;
+			memory_write16(cpu_registers->SP, cpu_registers->PC);
+			cpu_registers->PC = 0x20;
+			cycles = 32;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "RST $20");
+#endif
+			break;
 		case 0xEA:
 			// LD (nn), A
 			tmp_s = memory_read16(cpu_registers->PC);
@@ -866,6 +1081,16 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			cycles = 16;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "LD ($%04x), A", tmp_s);
+#endif
+			break;
+		case 0xEF:
+			// RST 0x28
+			cpu_registers->SP -= 2;
+			memory_write16(cpu_registers->SP, cpu_registers->PC);
+			cpu_registers->PC = 0x28;
+			cycles = 32;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "RST $28");
 #endif
 			break;
 		
@@ -879,6 +1104,31 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			sprintf(disassembly, "LD A,($FF00 + $%02x)", tmp_c);
 #endif
 			break;
+		case 0xF3:
+			// DI - Disable Interrupts
+			cpu_state.ime = 0;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "DI");
+#endif
+			break;
+		case 0xF7:
+			// RST 0x30
+			cpu_registers->SP -= 2;
+			memory_write16(cpu_registers->SP, cpu_registers->PC);
+			cpu_registers->PC = 0x30;
+			cycles = 32;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "RST $30");
+#endif
+			break;
+		case 0xFB:
+			// EI
+			cpu_state.ime = 1;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "EI");
+#endif
 		case 0xFE:
 			// CP n
 			tmp_c = memory_read8(cpu_registers->PC++);
@@ -887,6 +1137,16 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			sprintf(disassembly, "CP $%02x", tmp_c);
 #endif		
 			cycles = 8;
+			break;
+		case 0xFF:
+			// RST 0x38
+			cpu_registers->SP -= 2;
+			memory_write16(cpu_registers->SP, cpu_registers->PC);
+			cpu_registers->PC = 0x38;
+			cycles = 32;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "RST $38");
+#endif
 			break;
 		
 		default:
@@ -1008,7 +1268,89 @@ static unsigned char parse_prefixed_opcode(unsigned char opcode) {
 			sprintf(disassembly, "RL A");
 #endif
 			break;
-
+		
+		case 0x30:
+			// SWAP B
+			tmp_c = cpu_registers->B;
+			cpu_registers->B = ((tmp_c & 0xF)<<4 | (tmp_c & 0xF0)>>4);
+			cpu_registers->FLAG = (cpu_registers->B ? 0 : 1<<Z_FLAG);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SWAP B");
+#endif
+			break;
+		case 0x31:
+			// SWAP C
+			tmp_c = cpu_registers->C;
+			cpu_registers->C = ((tmp_c & 0xF)<<4 | (tmp_c & 0xF0)>>4);
+			cpu_registers->FLAG = (cpu_registers->C ? 0 : 1<<Z_FLAG);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SWAP C");
+#endif
+			break;
+		case 0x32:
+			// SWAP D
+			tmp_c = cpu_registers->D;
+			cpu_registers->D = ((tmp_c & 0xF)<<4 | (tmp_c & 0xF0)>>4);
+			cpu_registers->FLAG = (cpu_registers->D ? 0 : 1<<Z_FLAG);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SWAP D");
+#endif
+			break;
+		case 0x33:
+			// SWAP E
+			tmp_c = cpu_registers->E;
+			cpu_registers->E = ((tmp_c & 0xF)<<4 | (tmp_c & 0xF0)>>4);
+			cpu_registers->FLAG = (cpu_registers->E ? 0 : 1<<Z_FLAG);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SWAP E");
+#endif
+			break;
+		case 0x34:
+			// SWAP H
+			tmp_c = cpu_registers->H;
+			cpu_registers->H = ((tmp_c & 0xF)<<4 | (tmp_c & 0xF0)>>4);
+			cpu_registers->FLAG = (cpu_registers->H ? 0 : 1<<Z_FLAG);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SWAP H");
+#endif
+			break;
+		case 0x35:
+			// SWAP L
+			tmp_c = cpu_registers->L;
+			cpu_registers->L = ((tmp_c & 0xF)<<4 | (tmp_c & 0xF0)>>4);
+			cpu_registers->FLAG = (cpu_registers->L ? 0 : 1<<Z_FLAG);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SWAP L");
+#endif
+			break;
+		case 0x36:
+			// SWAP (HL)
+			tmp_c = memory_read8(cpu_registers->HL);
+			tmp_c = ((tmp_c & 0xF)<<4 | (tmp_c & 0xF0)>>4);
+			memory_write8(cpu_registers->HL, tmp_c);
+			cpu_registers->FLAG = (tmp_c ? 0 : 1<<Z_FLAG);
+			cycles = 8;
+#ifdef disassemble
+			sprintf(disassembly, "SWAP (HL)");
+#endif
+			break;
+		case 0x37:
+			// SWAP A
+			tmp_c = cpu_registers->A;
+			cpu_registers->A = ((tmp_c & 0xF)<<4 | (tmp_c & 0xF0)>>4);
+			cpu_registers->FLAG = (cpu_registers->A ? 0 : 1<<Z_FLAG);
+			cycles = 8;
+#ifdef disassemble
+			sprintf(disassembly, "SWAP A");
+#endif
+			break;
+		
 		case 0x78:
 			// BIT 7, B
 			tmp_c = (GET_BIT(cpu_registers->B, 7) << Z_FLAG);
@@ -1083,6 +1425,87 @@ static unsigned char parse_prefixed_opcode(unsigned char opcode) {
 	}
 	
 	return cycles;
+}
+
+static void cpu_rom_reset() {
+	/**
+	When loading the ROM, set the following values
+
+	   AF=$01B0
+	   BC=$0013
+	   DE=$00D8
+	   HL=$014D
+	   Stack Pointer=$FFFE
+	   [$FF05] = $00   ; TIMA
+	   [$FF06] = $00   ; TMA
+	   [$FF07] = $00   ; TAC
+	   [$FF10] = $80   ; NR10
+	   [$FF11] = $BF   ; NR11
+	   [$FF12] = $F3   ; NR12
+	   [$FF14] = $BF   ; NR14
+	   [$FF16] = $3F   ; NR21
+	   [$FF17] = $00   ; NR22
+	   [$FF19] = $BF   ; NR24
+	   [$FF1A] = $7F   ; NR30
+	   [$FF1B] = $FF   ; NR31
+	   [$FF1C] = $9F   ; NR32
+	   [$FF1E] = $BF   ; NR33
+	   [$FF20] = $FF   ; NR41
+	   [$FF21] = $00   ; NR42
+	   [$FF22] = $00   ; NR43
+	   [$FF23] = $BF   ; NR30
+	   [$FF24] = $77   ; NR50
+	   [$FF25] = $F3   ; NR51
+	   [$FF26] = $F1-GB, $F0-SGB ; NR52
+	   [$FF40] = $91   ; LCDC
+	   [$FF42] = $00   ; SCY
+	   [$FF43] = $00   ; SCX
+	   [$FF45] = $00   ; LYC
+	   [$FF47] = $FC   ; BGP
+	   [$FF48] = $FF   ; OBP0
+	   [$FF49] = $FF   ; OBP1
+	   [$FF4A] = $00   ; WY
+	   [$FF4B] = $00   ; WX
+	   [$FFFF] = $00   ; IE
+	*/
+	
+	cpu_registers->AF = 0x01B0;
+	cpu_registers->BC = 0x0013;
+	cpu_registers->DE = 0x00D8;
+	cpu_registers->HL = 0x014D;
+	cpu_registers->SP = 0xFFFE;
+	
+	memory_write8(0xFF05, 0x00);
+	memory_write8(0xFF06, 0x00);
+	memory_write8(0xFF07, 0x00);
+	memory_write8(0xFF10, 0x80);
+	memory_write8(0xFF11, 0xBF);
+	memory_write8(0xFF12, 0xF3);	
+	memory_write8(0xFF14, 0xBF);
+	memory_write8(0xFF16, 0x3F);
+	memory_write8(0xFF17, 0x00);
+	memory_write8(0xFF19, 0xBF);
+	memory_write8(0xFF1A, 0x7F);
+	memory_write8(0xFF1B, 0xFF);
+	memory_write8(0xFF1C, 0x9F);
+	memory_write8(0xFF1E, 0xBF);
+	memory_write8(0xFF20, 0xFF);
+	memory_write8(0xFF21, 0x00);
+	memory_write8(0xFF22, 0x00);
+	memory_write8(0xFF23, 0xBF);
+	memory_write8(0xFF24, 0x77);
+	memory_write8(0xFF25, 0xF3);
+	memory_write8(0xFF26, 0x00); // TODO: This value depends on system
+	memory_write8(0xFF40, 0x91);
+	memory_write8(0xFF42, 0x00);
+	memory_write8(0xFF43, 0x00);
+	memory_write8(0xFF45, 0x00);
+	memory_write8(0xFF47, 0xFC);
+	memory_write8(0xFF48, 0xFF);
+	memory_write8(0xFF49, 0xFF);
+	memory_write8(0xFF4A, 0x00);
+	memory_write8(0xFF4B, 0x00);
+	memory_write8(0xFFFF, 0x00);
 }
 
 /**

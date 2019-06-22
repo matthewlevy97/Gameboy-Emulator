@@ -11,14 +11,14 @@ Functions
 */
 void emulator_init() {
 	// Initialize system
-	cpu_init();
 	memory_init();
-	lcd_init();
 	graphics_init();
+	lcd_init();
+	cpu_init();
 }
 
 int main(int argc, char ** argv) {
-	int i, debugger, rom;
+	int i, debugger;
 	
 	emulator_init();
 	

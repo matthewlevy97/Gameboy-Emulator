@@ -28,6 +28,7 @@ void debugger_init() {
 }
 
 void debugger_loop() {
+	FILE * fp;
 	char c;
 	short s;
 	
@@ -40,23 +41,7 @@ void debugger_loop() {
 	signal(SIGINT, sig_handler);
 	for(;;) {
 		ctrl_c = 0;
-		
-		// Display registers
-		printf("A:  $%04x\t", cpu_state.registers.A);
-		printf("F:  $%04x\n", cpu_state.registers.F);
-		printf("B:  $%04x\t", cpu_state.registers.B);
-		printf("C:  $%04x\n", cpu_state.registers.C);
-		printf("D:  $%04x\t", cpu_state.registers.D);
-		printf("E:  $%04x\n", cpu_state.registers.E);
-		printf("H:  $%04x\t", cpu_state.registers.H);
-		printf("L:  $%04x\n", cpu_state.registers.L);
-		printf("AF: $%04x\n", cpu_state.registers.AF);
-		printf("BC: $%04x\n", cpu_state.registers.BC);
-		printf("DE: $%04x\n", cpu_state.registers.DE);
-		printf("HL: $%04x\n", cpu_state.registers.HL);
-		printf("SP: $%04x\t", cpu_state.registers.SP);
-		printf("PC: $%04x\n", cpu_state.registers.PC);
-		
+				
 		// Print prompt
 		printf(DEBUG_SHELL_PROMPT);
 		
@@ -88,6 +73,23 @@ void debugger_loop() {
 			// Single step
 			cpu_step();
 			break;
+		case 'i':
+			// Display registers
+			printf("A:  $%04x\t", cpu_state.registers.A);
+			printf("F:  $%04x\n", cpu_state.registers.F);
+			printf("B:  $%04x\t", cpu_state.registers.B);
+			printf("C:  $%04x\n", cpu_state.registers.C);
+			printf("D:  $%04x\t", cpu_state.registers.D);
+			printf("E:  $%04x\n", cpu_state.registers.E);
+			printf("H:  $%04x\t", cpu_state.registers.H);
+			printf("L:  $%04x\n", cpu_state.registers.L);
+			printf("AF: $%04x\n", cpu_state.registers.AF);
+			printf("BC: $%04x\n", cpu_state.registers.BC);
+			printf("DE: $%04x\n", cpu_state.registers.DE);
+			printf("HL: $%04x\n", cpu_state.registers.HL);
+			printf("SP: $%04x\t", cpu_state.registers.SP);
+			printf("PC: $%04x\n", cpu_state.registers.PC);
+			break;
 		case 'r':
 			// Run from beginning
 			cpu_reset();
@@ -97,6 +99,24 @@ void debugger_loop() {
 			cpu_step();
 			debugger_continue();
 			break;
+		case 'd':
+			// Dump memory
+			fp = fopen(DEBUG_DUMP_FILENAME, "wb");
+			fwrite(memory_dump(), INTERNAL_MEMORY_SIZE, 1, fp);
+			fclose(fp);
+			printf("Dumped memory to %s\n", DEBUG_DUMP_FILENAME);
+			break;
+		case 'h':
+			printf("x [address] - eXamine memory address\n");
+			printf("b [address] - set Breakpoint\n");
+			printf("i           - Info on registers\n");
+			printf("s           - single Step\n");
+			printf("r           - Restart / Run\n");
+			printf("c           - Continue execution\n");
+			printf("d           - Dump memory\n");
+			printf("h           - display Help\n");
+			printf("q           - Quit\n");
+			break;
 		case 'q':
 			// Exit
 			return;
@@ -104,7 +124,7 @@ void debugger_loop() {
 		
 #ifdef DISASSEMBLE
 		// Print last instruction executed
-		printf("$%04x %s\n", disassembly_pc, disassembly);
+		printf("$%04x: %s\n", disassembly_pc, disassembly);
 #endif
 	}
 }
