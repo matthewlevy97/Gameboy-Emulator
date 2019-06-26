@@ -145,8 +145,12 @@ static void debugger_continue() {
 	while(cpu_state.running && !ctrl_c) {
 		// Determine if we need to break out (breakpoint hit)
 		for(i = 0; i < settings.number_breakpoints; i++) {
-			if(cpu_state.registers.PC == settings.breakpoints[i])
+			if(cpu_state.registers.PC == settings.breakpoints[i]) {
+				printf("Breakpoint %d @ 0x%04x\n",
+					i, settings.breakpoints[i]
+				);
 				return;
+			}
 		}
 		
 		// If no breakpoints, continue execution

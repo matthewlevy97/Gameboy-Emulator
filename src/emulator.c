@@ -52,9 +52,6 @@ int main(int argc, char ** argv) {
 	} else {
 		while(cpu_state.running) {
 			cpu_step();
-#ifdef DISASSEMBLE
-			printf("$%04x %s\n", disassembly_pc, disassembly);
-#endif
 		}
 	}
 

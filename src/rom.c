@@ -27,3 +27,7 @@ void rom_load(char * filename) {
 	// Read in the first ROM bank
 	fread(ptr + 0x14F, /*32kb*/ 1 << 15, 1, fp);
 }
+
+void rom_set_preamble() {
+	memcpy(memory_dump(), preamble, 0x100);
+}

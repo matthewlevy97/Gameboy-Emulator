@@ -2,6 +2,7 @@
 #include "memory.h"
 #include "lcd.h"
 #include "graphics.h"
+#include "rom.h"
 
 /**
 Global variables
@@ -61,6 +62,11 @@ void cpu_setState(struct cpu_state state) {
 
 unsigned char cpu_step() {
 	unsigned char cycles, byte;
+
+#ifndef IGNORE_BOOTLOADER
+	if(cpu_registers->PC == 0x100)
+		rom_set_preamble();
+#endif
 	
 	byte = memory_read8(cpu_registers->PC++);
 #ifdef DISASSEMBLE
@@ -105,6 +111,14 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			sprintf(disassembly, "LD BC, $%04x", cpu_registers->BC);
 #endif
 			break;
+		case 0x02:
+			// LD (BC), A
+			memory_write8(cpu_registers->BC, cpu_registers->A);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD (BC), A");
+#endif
+			break;
 		case 0x03:
 			// INC BC
 			cpu_registers->BC++;
@@ -137,6 +151,29 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			cycles = 8;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "LD B, $%02x", cpu_registers->B);
+#endif
+			break;
+		case 0x07:
+			// RLCA
+			// TODO: Confirm this works
+			tmp_c = (cpu_registers->A >> 7) & 1;
+			cpu_registers->A <<= 0x1;
+			cpu_registers->A |= (cpu_registers->FLAG >> C_FLAG) & 0x1;
+			cpu_registers->FLAG = (cpu_registers->A ? 0 : 1<<Z_FLAG);
+			cpu_registers->FLAG |= (tmp_c << C_FLAG);
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "RLCA");
+#endif
+			break;
+		case 0x08:
+			// LD (nn), SP
+			tmp_s = memory_read16(cpu_registers->PC);
+			cpu_registers->PC += 2;
+			memory_write16(tmp_s, cpu_registers->SP);
+			cycles = 20;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD ($%04x), SP", tmp_s);
 #endif
 			break;
 		case 0x0A:
@@ -181,6 +218,19 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			sprintf(disassembly, "LD C, $%02x", cpu_registers->C);
 #endif
 			break;
+		case 0x0F:
+			// RRCA
+			tmp_c = cpu_registers->A & 0x1; // Far right
+			cpu_registers->A >>= 1; // Drop far right
+			cpu_registers->A |= (tmp_c << 7); // Set far left
+			cpu_registers->FLAG = (cpu_registers->A ? 0 : 1<<Z_FLAG);
+			cpu_registers->FLAG |= (tmp_c << C_FLAG);
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "RRCA");
+#endif
+			break;
+
 		
 		case 0x11:
 			// LD DE, nn
@@ -189,6 +239,14 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			cycles = 12;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "LD DE, $%04x", cpu_registers->DE);
+#endif
+			break;
+		case 0x12:
+			// LD (DE), A
+			memory_write8(cpu_registers->DE, cpu_registers->A);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD (DE), A");
 #endif
 			break;
 		case 0x13:
@@ -289,6 +347,19 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			cycles = 8;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "LD E, $%02x", cpu_registers->E);
+#endif
+			break;
+		case 0x1F:
+			// RRA
+			tmp_c = cpu_registers->A & 0x1; // Far right
+			tmp_s = (cpu_registers->FLAG >> C_FLAG) & 0x1; // C
+			cpu_registers->A >>= 1; // Drop far right
+			cpu_registers->A |= (tmp_s << 7); // Set far left
+			cpu_registers->FLAG = (cpu_registers->A ? 0 : 1<<Z_FLAG);
+			cpu_registers->FLAG |= (tmp_s << C_FLAG);
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "RRA");
 #endif
 			break;
 		
@@ -485,10 +556,18 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			memory_write8(cpu_registers->HL, tmp_c);
 			cycles = 12;
 #ifdef DISASSEMBLE
-			sprintf(disassembly, "LD (HL), $%04x");
+			sprintf(disassembly, "LD (HL), $%04x", tmp_c);
 #endif
 			break;
-
+		case 0x37:
+			// SCF
+			cpu_registers->FLAG &= (1 << Z_FLAG);
+			cpu_registers->FLAG |= (1 << C_FLAG);
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SCF");
+#endif
+			break;
 		case 0x38:
 			// JR C, *
 			tmp_c = memory_read8(cpu_registers->PC++);
@@ -500,6 +579,15 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			cycles = 8;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "JR C, %02d", tmp_c);
+#endif
+			break;
+		case 0x3A:
+			// LD A, (HL-)
+			tmp_s = memory_read8(cpu_registers->HL--);
+			cpu_registers->A = tmp_s;
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD A, (HL-)");
 #endif
 			break;
 		case 0x3B:
@@ -537,13 +625,137 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			sprintf(disassembly, "LD A, $%02x", cpu_registers->A);
 #endif
 			break;
+		case 0x3F:
+			// CCF
+			cpu_registers->FLAG &= (1 << Z_FLAG);
+			cpu_registers->FLAG ^= (1 << C_FLAG);
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "CCF");
+#endif
+			break;
 		
+		case 0x40:
+			// LD B, B
+			// Yep. This is a thing
+			cpu_registers->B = cpu_registers->B;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD B, B");
+#endif
+			break;
+		case 0x41:
+			// LD B, C
+			cpu_registers->B = cpu_registers->C;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD B, C");
+#endif
+			break;
+		case 0x42:
+			// LD B, D
+			cpu_registers->B = cpu_registers->D;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD B, D");
+#endif
+			break;
+		case 0x43:
+			// LD B, E
+			cpu_registers->B = cpu_registers->E;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD B, E");
+#endif
+			break;
+		case 0x44:
+			// LD B, H
+			cpu_registers->B = cpu_registers->H;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD B, H");
+#endif
+			break;
+		case 0x45:
+			// LD B, L
+			cpu_registers->B = cpu_registers->L;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD B, L");
+#endif
+			break;
+		case 0x46:
+			// LD B, (HL)
+			tmp_c = memory_read8(cpu_registers->HL);
+			cpu_registers->B = tmp_c;
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD B, (HL)");
+#endif
+			break;
 		case 0x47:
 			// LD B, A
 			cpu_registers->B = cpu_registers->A;
 			cycles = 4;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "LD B, A");
+#endif
+			break;
+		case 0x48:
+			// LD C, B
+			cpu_registers->C = cpu_registers->B;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD C, B");
+#endif
+			break;
+		case 0x49:
+			// LD C, C
+			cpu_registers->C = cpu_registers->C;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD C, C");
+#endif
+			break;
+		case 0x4A:
+			// LD C, D
+			cpu_registers->C = cpu_registers->D;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD C, D");
+#endif
+			break;
+		case 0x4B:
+			// LD C, E
+			cpu_registers->C = cpu_registers->E;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD C, E");
+#endif
+			break;
+		case 0x4C:
+			// LD C, H
+			cpu_registers->C = cpu_registers->H;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD C, H");
+#endif
+			break;
+		case 0x4D:
+			// LD C, L
+			cpu_registers->C = cpu_registers->L;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD C, L");
+#endif
+			break;
+		case 0x4E:
+			// LD C, (HL)
+			tmp_c = memory_read8(cpu_registers->HL);
+			cpu_registers->C = tmp_c;
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD C, (HL)");
 #endif
 			break;
 		case 0x4F:
@@ -554,13 +766,127 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			sprintf(disassembly, "LD C, A");
 #endif
 			break;
-	
+
+		case 0x50:
+			// LD D, B
+			cpu_registers->D = cpu_registers->B;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD D, B");
+#endif
+			break;
+		case 0x51:
+			// LD D, C
+			cpu_registers->D = cpu_registers->C;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD D, C");
+#endif
+			break;
+		case 0x52:
+			// LD D, D
+			cpu_registers->D = cpu_registers->D;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD D, D");
+#endif
+			break;
+		case 0x53:
+			// LD D, E
+			cpu_registers->D = cpu_registers->E;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD D, E");
+#endif
+			break;
+		case 0x54:
+			// LD D, H
+			cpu_registers->D = cpu_registers->H;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD D, H");
+#endif
+			break;
+		case 0x55:
+			// LD D, L
+			cpu_registers->D = cpu_registers->L;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD D, L");
+#endif
+			break;
+		case 0x56:
+			// LD D, (HL)
+			tmp_c = memory_read8(cpu_registers->HL);
+			cpu_registers->D = tmp_c;
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD D, (HL)");
+#endif
+			break;
 		case 0x57:
 			// LD D, A
 			cpu_registers->D = cpu_registers->A;
 			cycles = 4;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "LD D, A");
+#endif
+			break;
+		case 0x58:
+			// LD E, B
+			cpu_registers->E = cpu_registers->B;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD E, B");
+#endif
+			break;
+		case 0x59:
+			// LD E, C
+			cpu_registers->E = cpu_registers->C;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD E, C");
+#endif
+			break;
+		case 0x5A:
+			// LD E, D
+			cpu_registers->E = cpu_registers->D;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD E, D");
+#endif
+			break;
+		case 0x5B:
+			// LD E, E
+			cpu_registers->E = cpu_registers->E;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD E, E");
+#endif
+			break;
+		case 0x5C:
+			// LD E, H
+			cpu_registers->E = cpu_registers->H;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD E, H");
+#endif
+			break;
+		case 0x5D:
+			// LD E, L
+			cpu_registers->E = cpu_registers->L;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD E, L");
+#endif
+			break;
+		case 0x5E:
+			// LD E, (HL)
+			tmp_c = memory_read8(cpu_registers->HL);
+			cpu_registers->E = tmp_c;
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD E, (HL)");
 #endif
 			break;
 		case 0x5F:
@@ -572,12 +898,126 @@ static unsigned char parse_opcode(unsigned char opcode) {
 #endif
 			break;
 		
+		case 0x60:
+			// LD H, B
+			cpu_registers->H = cpu_registers->B;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD H, B");
+#endif
+			break;
+		case 0x61:
+			// LD H, C
+			cpu_registers->H = cpu_registers->C;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD H, C");
+#endif
+			break;
+		case 0x62:
+			// LD H, D
+			cpu_registers->H = cpu_registers->D;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD H, D");
+#endif
+			break;
+		case 0x63:
+			// LD H, E
+			cpu_registers->H = cpu_registers->E;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD H, E");
+#endif
+			break;
+		case 0x64:
+			// LD H, H
+			cpu_registers->H = cpu_registers->H;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD H, H");
+#endif
+			break;
+		case 0x65:
+			// LD H, L
+			cpu_registers->H = cpu_registers->L;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD H, L");
+#endif
+			break;
+		case 0x66:
+			// LD H, (HL)
+			tmp_c = memory_read8(cpu_registers->HL);
+			cpu_registers->H = tmp_c;
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD H, (HL)");
+#endif
+			break;
 		case 0x67:
 			// LD H, A
 			cpu_registers->H = cpu_registers->A;
 			cycles = 4;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "LD H, A");
+#endif
+			break;
+		case 0x68:
+			// LD L, B
+			cpu_registers->L = cpu_registers->B;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD L, B");
+#endif
+			break;
+		case 0x69:
+			// LD L, C
+			cpu_registers->L = cpu_registers->C;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD L, C");
+#endif
+			break;
+		case 0x6A:
+			// LD L, D
+			cpu_registers->L = cpu_registers->D;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD L, D");
+#endif
+			break;
+		case 0x6B:
+			// LD L, E
+			cpu_registers->L = cpu_registers->E;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD L, E");
+#endif
+			break;
+		case 0x6C:
+			// LD L, H
+			cpu_registers->L = cpu_registers->H;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD L, H");
+#endif
+			break;
+		case 0x6D:
+			// LD L, L
+			cpu_registers->L = cpu_registers->L;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD L, L");
+#endif
+			break;
+		case 0x6E:
+			// LD L, (HL)
+			tmp_c = memory_read8(cpu_registers->HL);
+			cpu_registers->L = tmp_c;
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD L, (HL)");
 #endif
 			break;
 		case 0x6F:
@@ -588,7 +1028,64 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			sprintf(disassembly, "LD L, A");
 #endif
 			break;
-
+		
+		case 0x70:
+			// LD (HL), B
+			memory_write8(cpu_registers->HL, cpu_registers->B);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD (HL), B");
+#endif
+			break;
+		case 0x71:
+			// LD (HL), C
+			memory_write8(cpu_registers->HL, cpu_registers->C);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD (HL), C");
+#endif
+			break;
+		case 0x72:
+			// LD (HL), D
+			memory_write8(cpu_registers->HL, cpu_registers->D);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD (HL), D");
+#endif
+			break;
+		case 0x73:
+			// LD (HL), E
+			memory_write8(cpu_registers->HL, cpu_registers->E);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD (HL), E");
+#endif
+			break;
+		case 0x74:
+			// LD (HL), H
+			memory_write8(cpu_registers->HL, cpu_registers->H);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD (HL), H");
+#endif
+			break;
+		case 0x75:
+			// LD (HL), L
+			memory_write8(cpu_registers->HL, cpu_registers->L);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD (HL), L");
+#endif
+			break;
+		case 0x76:
+			// HALT
+			// TODO: Implement logic
+			cpu_state.halt = 1;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "HALT");
+#endif
+			break;
 		case 0x77:
 			// LD (HL), A
 			memory_write8(cpu_registers->HL, cpu_registers->A);
@@ -651,6 +1148,14 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			cycles = 8;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "LD A, (HL)");
+#endif
+			break;
+		case 0x7F:
+			// LD A, A
+			cpu_registers->A = cpu_registers->A;
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD A, A");
 #endif
 			break;
 		
@@ -1506,6 +2011,8 @@ static void cpu_rom_reset() {
 	memory_write8(0xFF4A, 0x00);
 	memory_write8(0xFF4B, 0x00);
 	memory_write8(0xFFFF, 0x00);
+	
+	rom_set_preamble();
 }
 
 /**

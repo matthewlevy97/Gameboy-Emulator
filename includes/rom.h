@@ -24,5 +24,6 @@ struct cartridge_header {
 };
 
 void rom_load(char * filename);
+void rom_set_preamble();
 
 #endif

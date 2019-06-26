@@ -131,7 +131,9 @@ struct registers {
 struct cpu_state {
 	unsigned char running;
 	unsigned char ime; /* 0 - disable interrupts, 1 - enable interrupts */
+	unsigned char halt;
 	unsigned long long total_cycles;
+	short lcd_wait_cycles;
 	struct registers registers;
 };
 

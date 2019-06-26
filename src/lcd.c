@@ -1,4 +1,5 @@
 #include "lcd.h"
+#include "cpu.h"
 #include "memory.h"
 #include "ioports.h"
 #include "graphics.h"
@@ -25,20 +26,21 @@ void lcd_init() {
 }
 
 void lcd_update(unsigned char cycles) {
-	static short wait_cycles = 0;
 	// Determine if LCD Display is enabled
 	if((lcd_registers->lcdc_control >> 7) ^ 0x1)
 		return;
 	
 	// Determine if enough cycles passed
-	wait_cycles -= cycles;
-	if(wait_cycles > 0) return;
+	cpu_state.lcd_wait_cycles -= cycles;
+	if(cpu_state.lcd_wait_cycles > 0) return;
 	
 	// Handle GPU status
 	switch(lcd_registers->lcdc_status & 0x3) {
 		case 0:
 			// H_BLANK
 			// TODO: Signal interrupt
+			cpu_state.lcd_wait_cycles += 204;
+			
 			// Move to the next line
 			lcd_registers->lcdc_y++;
 			
@@ -48,12 +50,11 @@ void lcd_update(unsigned char cycles) {
 			else
 				lcd_registers->lcdc_status |= 0x2; // OAM
 			
-			wait_cycles = 204;
 			break;
 		case 1:
 			// V_BLANK (10 lines)
 			// TODO: Signal interrupt
-			wait_cycles = 456; // Cycles per line
+			cpu_state.lcd_wait_cycles += 456; // Cycles per line
 			
 			// Move to the next line
 			lcd_registers->lcdc_y++;
@@ -68,7 +69,7 @@ void lcd_update(unsigned char cycles) {
 			break;
 		case 2:
 			// Scanline (OAM)
-			wait_cycles = 80;
+			cpu_state.lcd_wait_cycles += 80;
 			
 			// Set mode from 2 -> 3
 			lcd_registers->lcdc_status |= 0x1;
@@ -78,7 +79,7 @@ void lcd_update(unsigned char cycles) {
 			// Render scanline now
 			drawScanline();
 			
-			wait_cycles = 172;
+			cpu_state.lcd_wait_cycles += 172;
 			
 			// Set mode from 3 -> 0
 			lcd_registers->lcdc_status ^= 0x3;
@@ -159,10 +160,23 @@ static void drawScanline() {
 			bits = (tile[0] >> i) & 0x1;
 			bits |= ((tile[1] >> i) & 0x1) << 1;
 			
-			if(bits)
-				graphics_setColor(0, 0, 0, 255);
-			else
-				graphics_setColor(255, 255, 255, 255);
+			// Determine color from palete
+			// Gameboy Original
+			switch((lcd_registers->bgp >> ((bits * 2))) & 0x3)
+			{
+				case 0x0:
+					graphics_setColor(255, 255, 255, 255);
+					break;
+				case 0x1:
+					graphics_setColor(170, 170, 170, 255);
+					break;
+				case 0x2:
+					graphics_setColor(85, 85, 85, 255);
+					break;
+				case 0x3:
+					graphics_setColor(0, 0, 0, 255);
+					break;
+			}
 			
 			graphics_drawPixel(pixel, lcd_registers->lcdc_y);
 		}
@@ -170,27 +184,6 @@ static void drawScanline() {
 			// OBJ (Sprite) Display Enabled
 		}
 	}
-	/**
-	// Example to print out the first 26 tiles
-	tile = vram;
-	for(int k = 0; k < 26; k++) {
-	for(int j = 8; j--;) {
-		for(i = 8; i--;) {
-			// Probably a better way to do this, but it works for now
-			bits = (tile[2*j] >> i) & 0x1;
-			bits |= ((tile[2*j+1] >> i) & 0x1) << 1;
-			
-			if(bits)
-				graphics_setColor(255, 0, 255, 255);
-			else
-				graphics_setColor(0, 0, 0, 255);
-			
-			graphics_drawPixel((k % 13 + 1)*8 + (k > 12 ? 8 : 0) - i, j + (k / 13 * 8));
-		}
-
-	}
-	tile += 16;
-	}
-	*/
+	
 	graphics_render();
 }

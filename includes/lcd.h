@@ -3,11 +3,6 @@
 
 #define LCD_TILE_SIZE 16
 
-#define LCD_H_BLANK_CYCLES   4
-#define LCD_V_BLANK_CYCLES   4
-#define OAM_SCANLINE_CYCLES  4
-#define VRAM_SCANLINE_CYCLES 4
-
 /**
 LCD Colors:
 	00: White
