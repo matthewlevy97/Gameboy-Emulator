@@ -1,10 +1,11 @@
 #include "graphics.h"
+#include "emulator.h"
 #include "cpu.h"
 
 static SDL_Renderer * renderer;
 static SDL_Window * window;
 
-void graphics_init() {
+void graphics_init(char * window_title) {
 	SDL_Init(SDL_INIT_VIDEO);
 	SDL_CreateWindowAndRenderer(
 		LCD_SCREEN_WIDTH * GRAPHICS_SCALE,
@@ -12,7 +13,7 @@ void graphics_init() {
 		SDL_WINDOW_SHOWN,
 		&window, &renderer
 	);
-	SDL_SetWindowTitle(window, "Gameboy Emulator v0.1");
+	SDL_SetWindowTitle(window, window_title);
 	
 	graphics_setColor(0, 0, 0, 255);
 	graphics_clearScreen();

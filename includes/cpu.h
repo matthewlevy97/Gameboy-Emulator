@@ -22,6 +22,15 @@ Z N H C 0 0 0 0
 #define C_FLAG 4
 
 /**
+Macros for determining Half-Carrys
+*/
+#define HALF_CARRY_ADD(a, b) ((a & 0xF) + (b & 0xF) > 0xF)
+#define HALF_CARRY_ADD16(a, b) ((a & 0xFFF) + (b & 0xFFF) > 0xFFF)
+
+#define HALF_CARRY_SUB(a, b) ((signed)(a & 0xF) - (signed)(b & 0xF) < 0)
+#define HALF_CARRY_SUB16(a, b) ((signed)(a & 0xFFF) - (signed)(b & 0xFFF) < 0)
+
+/**
 PUSH and POP
 
 PUSH:

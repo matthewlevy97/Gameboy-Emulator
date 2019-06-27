@@ -10,9 +10,20 @@
 Functions
 */
 void emulator_init() {
+	char window_title[256];
+	
+	// Print startup information
+	sprintf(window_title, "%s v%d.%d",
+		EMULATOR_TITLE,
+		VERSION_MAJOR,
+		VERSION_MINOR
+	);
+	printf("Created by "AUTHOR"\n");
+	printf("%s\n", window_title);
+	
 	// Initialize system
 	memory_init();
-	graphics_init();
+	graphics_init(window_title);
 	lcd_init();
 	cpu_init();
 }

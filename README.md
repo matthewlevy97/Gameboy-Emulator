@@ -1,4 +1,17 @@
-# Done
+# GameBoy Emulator
+
+# TODO
+- Implement all opcode
+	- Abstract out common code
+	- Improve ADD and SUB functions
+		- Confirm they work as intended
+
+- Implement sprites
+- Implement DMA transfer
+- Implement joypad control
+- Implement ROM banking
+
+# Completed
 - Implement cycle tracker to allow "simultaneous" execution of instructions, graphics, audio, etc
 - Dump sprites to text file
 	- PURPOSE: Confirm loading successfully
@@ -11,9 +24,5 @@
 - Determine addresses for drawing pixels
 - Created basic debugger
 - UI for drawing of LCD screen
-
-# TODO
 - Implement interrupts
-- Finish implementing all opcode
-	- Abstract out common code
-- Implement sprites
+
