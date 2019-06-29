@@ -3,6 +3,7 @@
 #include "memory.h"
 #include "ioports.h"
 #include "graphics.h"
+#include "interrupt.h"
 
 /**
 Static Functions
@@ -25,10 +26,28 @@ void lcd_init() {
 	vram += 0x8000;
 }
 
+void lcd_dma_transfer(unsigned char val) {
+	char * mem;
+	
+	// Lock everything except HRAM
+	memory_lockRegion(LRAM_LOCK, MEMORY_READ | MEMORY_WRITE);
+	
+	// Do transfer
+	mem = memory_dump();
+	memcpy(mem + 0xFE00, mem + (0x100 * val), 0xA0);
+	
+	// Takes 160 (0xA0) cycles to complete
+	
+	// Unlock LRAM
+	memory_lockRegion(LRAM_LOCK, 0);
+}
+
 void lcd_update(unsigned char cycles) {
 	// Determine if LCD Display is enabled
-	if((lcd_registers->lcdc_control >> 7) ^ 0x1)
+	if((lcd_registers->lcdc_control >> 7) ^ 0x1) {
+		graphics_screen_off();
 		return;
+	}
 	
 	// Determine if enough cycles passed
 	cpu_state.lcd_wait_cycles -= cycles;
@@ -53,7 +72,9 @@ void lcd_update(unsigned char cycles) {
 			break;
 		case 1:
 			// V_BLANK (10 lines)
-			// TODO: Signal interrupt
+			// Signal interrupt
+			interrupt_trigger(V_BLANK_INTERRUPT);
+			
 			cpu_state.lcd_wait_cycles += 456; // Cycles per line
 			
 			// Move to the next line

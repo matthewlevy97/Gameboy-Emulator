@@ -148,6 +148,7 @@ struct cpu_state {
 
 void cpu_init();
 void cpu_reset();
+void cpu_rom_reset();
 
 struct cpu_state cpu_getState();
 void cpu_setState(struct cpu_state state);

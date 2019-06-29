@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 /**
 $FFFF   	Interrupt Enable Flag
 $FF80-$FFFE	Zero Page - 127 bytes
@@ -25,6 +24,11 @@ $0000-$00FF	Restart and Interrupt Vectors
 */
 #define INTERNAL_MEMORY_SIZE 0xFFFF
 
+enum memory_op {
+	MEMORY_ENABLED = 1,
+	MEMORY_WRITE   = 2,
+	MEMORY_READ    = 4
+};
 struct memory_region {
 	unsigned short base;
 	unsigned short bound;
@@ -32,6 +36,20 @@ struct memory_region {
 	unsigned short (*read16)(unsigned short);
 	void  (*write8)(unsigned short, char);
 	void  (*write16)(unsigned short, short);
+};
+
+enum memory_lock_regions {
+	LRAM_LOCK = 0
+};
+struct memory_locked_region {
+	/**
+		Enabled - bit 0
+		Write   - bit 1
+		Read    - bit 2
+	*/
+	unsigned short base;
+	unsigned short bound;
+	unsigned char rwe_lock;
 };
 
 void memory_init();
@@ -44,5 +62,7 @@ unsigned short memory_read16(unsigned short address);
 
 void memory_write8(unsigned short address, char val);
 void memory_write16(unsigned short address, short val);
+
+void memory_lockRegion(enum memory_lock_regions region, enum memory_op op);
 
 #endif

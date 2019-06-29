@@ -12,7 +12,7 @@ LCD Colors:
 */
 
 void lcd_init();
-
+void lcd_dma_transfer(unsigned char val);
 void lcd_update(unsigned char cycles);
 
 #endif

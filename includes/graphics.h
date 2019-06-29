@@ -11,6 +11,8 @@
 void graphics_init();
 void graphics_destroy();
 
+void graphics_screen_off();
+
 void graphics_setColor(int r, int g, int b, int a);
 void graphics_drawPixel(int x, int y);
 void graphics_clearScreen();

@@ -4,6 +4,7 @@
 #include "lcd.h"
 #include "graphics.h"
 #include "rom.h"
+#include "interrupt.h"
 #include "debugger.h"
 
 /**
@@ -23,6 +24,7 @@ void emulator_init() {
 	
 	// Initialize system
 	memory_init();
+	interrupt_init();
 	graphics_init(window_title);
 	lcd_init();
 	cpu_init();
@@ -45,15 +47,21 @@ int main(int argc, char ** argv) {
 		// Print help
 		if(!strcmp(argv[i], "-h")) {
 			printf("usage: %s\n", argv[0]);
-			printf("\t-f\tROM File (.gb)\n");
-			printf("\t-debug\tStart debugger\n");
-			printf("\t-h\tDisplay this screen\n");
+			printf("\t-f                  ROM File (.gb)\n");
+			printf("\t-debug              Start debugger\n");
+			printf("\t-ignore-bootloader  Skip bootloader\n");
+			printf("\t-h                  Display this screen\n");
 			return 0;
 		}
 		
 		// Start debugger
 		if(!strcmp(argv[i], "-debug")) {
 			debugger = 1;
+		}
+		
+		// Ignore bootloader
+		if(!strcmp(argv[i], "-ignore-bootloader")) {
+			cpu_rom_reset();
 		}
 	}
 	

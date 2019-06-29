@@ -10,12 +10,9 @@ OUTPUT_DIR  := build
 # -DDISASSEMBLE   ->    Display all commands executed
 DEBUG_FLAGS := -g -DDISASSEMBLE
 
-# Comment out to start at bootloader
-IGNORE_BOOTLOADER := -DIGNORE_BOOTLOADER
-
 GRAPHICS_LIBRARY := -lSDL2
 
-CFLAGS := -I$(INCLUDE_DIR) $(DEBUG_FLAGS) $(IGNORE_BOOTLOADER) -Wall
+CFLAGS := -I$(INCLUDE_DIR) $(DEBUG_FLAGS) -Wall -O3
 LFLAGS := $(GRAPHICS_LIBRARY)
 
 CFILES := $(wildcard $(SOURCE_DIR)/*.c)

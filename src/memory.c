@@ -1,11 +1,13 @@
 #include "memory.h"
 #include "cpu.h"
+#include "lcd.h"
 #include "ioports.h"
 
 /**
 Static Functions
 */
 static struct memory_region * getMemoryRegion(unsigned short address);
+static char isRegionLocked(unsigned short address, enum memory_op op);
 
 static unsigned char  io_port_read8(unsigned short address);
 static unsigned short io_port_read16(unsigned short address);
@@ -47,11 +49,21 @@ static const char bootstrap_code[256] = {
 	If region not found here, revert to default behavior
 */
 #define MEMORY_REGIONS_LEN 1
-static struct memory_region memory_regions[] = {
+static struct memory_region
+memory_regions[MEMORY_REGIONS_LEN] = {
+	// IO PORTS
 	{
 		.base=0xFF00, .bound=0xFF4C,
 		.read8=&io_port_read8, .read16=&io_port_read16,
 		.write8=&io_port_write8, .write16=&io_port_write16
+	}
+};
+#define MEMORY_LOCKED_REGIONS_LEN 1
+static struct memory_locked_region
+memory_locked_regions[MEMORY_LOCKED_REGIONS_LEN] = {
+	// Anything not HRAM
+	{
+		.base=0x0000, .bound=0xFF80, .rwe_lock=0x00
 	}
 };
 
@@ -72,12 +84,20 @@ void memory_reset() {
 void * memory_dump() {
 	return memory;
 }
+void memory_lockRegion(enum memory_lock_regions region, enum memory_op op) {
+	if(op) op |= MEMORY_ENABLED;
+	memory_locked_regions[region].rwe_lock = op;
+}
 
 unsigned char memory_read8(unsigned short address) {
 	struct memory_region * region;
 #ifdef DEBUG_MEMORY
 	printf("[memory_read8] Address: $%04x\n", address);
 #endif
+	if(isRegionLocked(address, MEMORY_READ)) {
+		printf("Cannot access memory region $%04x\n", address);
+		exit(0);
+	}
 	
 	// Call the read8 for the region if one exists
 	if((region = getMemoryRegion(address)))
@@ -89,6 +109,10 @@ unsigned short memory_read16(unsigned short address) {
 #ifdef DEBUG_MEMORY
 	printf("[memory_read16] Address: $%04x\n", address);
 #endif	
+	if(isRegionLocked(address, MEMORY_READ)) {
+		printf("Cannot access memory region $%04x\n", address);
+		exit(0);
+	}
 	
 	// Call the read16 for the region if one exists
 	if((region = getMemoryRegion(address)))
@@ -101,6 +125,10 @@ void memory_write8(unsigned short address, char val) {
 #ifdef DEBUG_MEMORY
 	printf("[memory_write8] Address: $%04x\tValue: $%02x\n", address, val);
 #endif
+	if(isRegionLocked(address, MEMORY_WRITE)) {
+		printf("Cannot access memory region $%04x\n", address);
+		exit(0);
+	}
 	
 	// Call the write8 for the region if one exists
 	if((region = getMemoryRegion(address)))
@@ -113,6 +141,10 @@ void memory_write16(unsigned short address, short val) {
 #ifdef DEBUG_MEMORY
 	printf("[memory_write16] Address: $%04x\tValue: $%02x\n", address, val);
 #endif
+	if(isRegionLocked(address, MEMORY_WRITE)) {
+		printf("Cannot access memory region $%04x\n", address);
+		exit(0);
+	}
 	
 	// Call the write16 for the region if one exists
 	if((region = getMemoryRegion(address)))
@@ -132,6 +164,17 @@ static struct memory_region * getMemoryRegion(unsigned short address) {
 	}
 	return NULL;
 }
+static char isRegionLocked(unsigned short address, enum memory_op op) {
+	for(int i = MEMORY_LOCKED_REGIONS_LEN; i--;) {
+		if(memory_locked_regions[i].rwe_lock & 0x1 &&
+			memory_locked_regions[i].rwe_lock & op &&
+			address >= memory_locked_regions[i].base &&
+			address < memory_locked_regions[i].bound) {
+			return 1;
+		}
+	}
+	return 0;
+}
 
 static unsigned char io_port_read8(unsigned short address) {
 	return memory[address];
@@ -139,8 +182,11 @@ static unsigned char io_port_read8(unsigned short address) {
 static unsigned short io_port_read16(unsigned short address) {
 	return *((short*)(memory + address));
 }
-static void io_port_write8(unsigned short address, char val) {
+static void io_port_write8(unsigned short address, char val) {	
 	memory[address] = val;
+	
+	// Do we need to do a DMA Transfer
+	if(address == 0xFF46) lcd_dma_transfer(val);
 }
 static void io_port_write16(unsigned short address, short val) {
 	*(short*)(memory+address) = val;

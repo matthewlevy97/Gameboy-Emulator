@@ -2,6 +2,7 @@
 #include "memory.h"
 #include "lcd.h"
 #include "graphics.h"
+#include "interrupt.h"
 #include "rom.h"
 
 /**
@@ -12,8 +13,6 @@ struct cpu_state cpu_state;
 /**
 Static Functions
 */
-static void cpu_rom_reset();
-
 static unsigned char parse_opcode(unsigned char opcode);
 static unsigned char parse_prefixed_opcode(unsigned char opcode);
 
@@ -23,8 +22,6 @@ static void do_cp(unsigned char val);
 Static Variables
 */
 static struct registers * _regs;
-static char * _interrupt_enable;
-static char * _interrupt_waiting;
 
 #ifdef DISASSEMBLE
 char disassembly[256];
@@ -37,9 +34,6 @@ Functions
 void cpu_init() {	
 	_regs = &cpu_state.registers;
 	
-	_interrupt_enable  = memory_dump() + 0xFFFF;
-	_interrupt_waiting = memory_dump() + 0xFF0F;
-
 	cpu_reset();
 }
 
@@ -47,11 +41,91 @@ void cpu_reset() {
 	// Reset everything
 	memset(&cpu_state, 0, sizeof(struct cpu_state));
 	cpu_state.running = 1;
+}
 
-#ifdef IGNORE_BOOTLOADER
-	cpu_rom_reset();
-#endif
+void cpu_rom_reset() {
+	/**
+	When loading the ROM, set the following values
 
+	   AF=$01B0
+	   BC=$0013
+	   DE=$00D8
+	   HL=$014D
+	   Stack Pointer=$FFFE
+	   [$FF05] = $00   ; TIMA
+	   [$FF06] = $00   ; TMA
+	   [$FF07] = $00   ; TAC
+	   [$FF10] = $80   ; NR10
+	   [$FF11] = $BF   ; NR11
+	   [$FF12] = $F3   ; NR12
+	   [$FF14] = $BF   ; NR14
+	   [$FF16] = $3F   ; NR21
+	   [$FF17] = $00   ; NR22
+	   [$FF19] = $BF   ; NR24
+	   [$FF1A] = $7F   ; NR30
+	   [$FF1B] = $FF   ; NR31
+	   [$FF1C] = $9F   ; NR32
+	   [$FF1E] = $BF   ; NR33
+	   [$FF20] = $FF   ; NR41
+	   [$FF21] = $00   ; NR42
+	   [$FF22] = $00   ; NR43
+	   [$FF23] = $BF   ; NR30
+	   [$FF24] = $77   ; NR50
+	   [$FF25] = $F3   ; NR51
+	   [$FF26] = $F1-GB, $F0-SGB ; NR52
+	   [$FF40] = $91   ; LCDC
+	   [$FF42] = $00   ; SCY
+	   [$FF43] = $00   ; SCX
+	   [$FF45] = $00   ; LYC
+	   [$FF47] = $FC   ; BGP
+	   [$FF48] = $FF   ; OBP0
+	   [$FF49] = $FF   ; OBP1
+	   [$FF4A] = $00   ; WY
+	   [$FF4B] = $00   ; WX
+	   [$FFFF] = $00   ; IE
+	*/
+	
+	_regs->AF = 0x01B0;
+	_regs->BC = 0x0013;
+	_regs->DE = 0x00D8;
+	_regs->HL = 0x014D;
+	_regs->SP = 0xFFFE;
+	
+	memory_write8(0xFF05, 0x00);
+	memory_write8(0xFF06, 0x00);
+	memory_write8(0xFF07, 0x00);
+	memory_write8(0xFF10, 0x80);
+	memory_write8(0xFF11, 0xBF);
+	memory_write8(0xFF12, 0xF3);	
+	memory_write8(0xFF14, 0xBF);
+	memory_write8(0xFF16, 0x3F);
+	memory_write8(0xFF17, 0x00);
+	memory_write8(0xFF19, 0xBF);
+	memory_write8(0xFF1A, 0x7F);
+	memory_write8(0xFF1B, 0xFF);
+	memory_write8(0xFF1C, 0x9F);
+	memory_write8(0xFF1E, 0xBF);
+	memory_write8(0xFF20, 0xFF);
+	memory_write8(0xFF21, 0x00);
+	memory_write8(0xFF22, 0x00);
+	memory_write8(0xFF23, 0xBF);
+	memory_write8(0xFF24, 0x77);
+	memory_write8(0xFF25, 0xF3);
+	memory_write8(0xFF26, 0x00); // TODO: This value depends on system
+	memory_write8(0xFF40, 0x91);
+	memory_write8(0xFF42, 0x00);
+	memory_write8(0xFF43, 0x00);
+	memory_write8(0xFF45, 0x00);
+	memory_write8(0xFF47, 0xFC);
+	memory_write8(0xFF48, 0xFF);
+	memory_write8(0xFF49, 0xFF);
+	memory_write8(0xFF4A, 0x00);
+	memory_write8(0xFF4B, 0x00);
+	memory_write8(0xFFFF, 0x00);
+	
+	rom_set_preamble();
+	
+	_regs->PC = 0x100;
 }
 
 struct cpu_state cpu_getState() {
@@ -63,18 +137,18 @@ void cpu_setState(struct cpu_state state) {
 
 unsigned char cpu_step() {
 	unsigned char cycles, byte;
-
-#ifndef IGNORE_BOOTLOADER
-	if(_regs->PC == 0x100)
-		rom_set_preamble();
-#endif
 	
+	// Does the preamble need to be loaded
+	// This is only done after bootloader runs
+	if(_regs->PC == 0x100) {
+		rom_set_preamble();
+	}
+
 	byte = memory_read8(_regs->PC++);
 #ifdef DISASSEMBLE
 	disassembly_pc = _regs->PC - 1;
 	memset(disassembly, 0, sizeof(disassembly));
 #endif
-	
 	cycles = parse_opcode(byte);
 	cpu_state.total_cycles += cycles;
 	
@@ -88,55 +162,7 @@ unsigned char cpu_step() {
 	
 	// Check for interrupts
 	if(cpu_state.ime) {
-		// See if interrupt needs to be handled
-		byte = (*_interrupt_waiting) & (*_interrupt_enable);
-		if(byte) {
-			// Disable interrupts
-			cpu_state.ime = 0;
-			
-			// Push address onto stack
-			_regs->SP -= 2;
-			memory_write16(_regs->SP, _regs->PC);
-			// TODO: How many cycles to PUSH PC ???
-			
-			// Determine which interrupt to execute
-			if(byte & 0x1) {
-				// V_BLANK
-				// Jump
-				_regs->PC = 0x40;
-				
-				// Clear Flag
-				*_interrupt_waiting ^= 0x1;
-			} else if(byte & 0x2) {
-				// LCD_STAT
-				// Jump
-				_regs->PC = 0x48;
-				
-				// Clear Flag
-				*_interrupt_waiting ^= 0x2;
-			} else if(byte & 0x4) {
-				// TIMER
-				// Jump
-				_regs->PC = 0x50;
-				
-				// Clear Flag
-				*_interrupt_waiting ^= 0x4;
-			} else if(byte & 0x8) {
-				// SERIAL
-				// Jump
-				_regs->PC = 0x58;
-				
-				// Clear Flag
-				*_interrupt_waiting ^= 0x8;
-			} else if(byte & 0x10) {
-				// JOYPAD
-				// Jump
-				_regs->PC = 0x60;
-				
-				// Clear Flag
-				*_interrupt_waiting ^= 0x10;
-			}
-		}
+		interrupt_handle();
 	}
 	
 	return cycles;
@@ -1429,9 +1455,9 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			break;
 		case 0x86:
 			// ADD A, (HL)
-			tmp_c = memory_read8(_regs->HL);
+			tmp_s = memory_read8(_regs->HL);
 			_regs->A = (signed)(_regs->A) +
-					(signed)(tmp_c);
+				(signed char)(tmp_s);
 			
 			// Z_FLAG
 			_regs->FLAG = (_regs->A ? 0 : 1<<Z_FLAG);
@@ -2090,7 +2116,7 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			memory_write8(0xFF00 + tmp_c, _regs->A);
 			cycles = 12;
 #ifdef DISASSEMBLE
-			sprintf(disassembly, "LD ($ff00 + $%02x), A", tmp_c);
+			sprintf(disassembly, "LD ($FF00 + $%02x), A", tmp_c);
 #endif
 			break;
 		case 0xE1:
@@ -2107,7 +2133,7 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			memory_write8(0xFF00 + _regs->C, _regs->A);
 			cycles = 8;
 #ifdef DISASSEMBLE
-			sprintf(disassembly, "LD ($ff00 + C), A");
+			sprintf(disassembly, "LD ($FF00 + C), A");
 #endif
 			break;
 		case 0xE5:
@@ -2215,6 +2241,18 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			cycles = 32;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "RST $30");
+#endif
+			break;
+		case 0xFA:
+			// LD A, (nn)
+			tmp_s = memory_read16(_regs->PC);
+			_regs->PC += 2;
+			
+			_regs->A = memory_read8(tmp_s);
+			
+			cycles = 16;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD A, ($%04x)", tmp_s);
 #endif
 			break;
 		case 0xFB:
@@ -2583,91 +2621,6 @@ static unsigned char parse_prefixed_opcode(unsigned char opcode) {
 	}
 	
 	return cycles;
-}
-
-static void cpu_rom_reset() {
-	/**
-	When loading the ROM, set the following values
-
-	   AF=$01B0
-	   BC=$0013
-	   DE=$00D8
-	   HL=$014D
-	   Stack Pointer=$FFFE
-	   [$FF05] = $00   ; TIMA
-	   [$FF06] = $00   ; TMA
-	   [$FF07] = $00   ; TAC
-	   [$FF10] = $80   ; NR10
-	   [$FF11] = $BF   ; NR11
-	   [$FF12] = $F3   ; NR12
-	   [$FF14] = $BF   ; NR14
-	   [$FF16] = $3F   ; NR21
-	   [$FF17] = $00   ; NR22
-	   [$FF19] = $BF   ; NR24
-	   [$FF1A] = $7F   ; NR30
-	   [$FF1B] = $FF   ; NR31
-	   [$FF1C] = $9F   ; NR32
-	   [$FF1E] = $BF   ; NR33
-	   [$FF20] = $FF   ; NR41
-	   [$FF21] = $00   ; NR42
-	   [$FF22] = $00   ; NR43
-	   [$FF23] = $BF   ; NR30
-	   [$FF24] = $77   ; NR50
-	   [$FF25] = $F3   ; NR51
-	   [$FF26] = $F1-GB, $F0-SGB ; NR52
-	   [$FF40] = $91   ; LCDC
-	   [$FF42] = $00   ; SCY
-	   [$FF43] = $00   ; SCX
-	   [$FF45] = $00   ; LYC
-	   [$FF47] = $FC   ; BGP
-	   [$FF48] = $FF   ; OBP0
-	   [$FF49] = $FF   ; OBP1
-	   [$FF4A] = $00   ; WY
-	   [$FF4B] = $00   ; WX
-	   [$FFFF] = $00   ; IE
-	*/
-	
-	_regs->AF = 0x01B0;
-	_regs->BC = 0x0013;
-	_regs->DE = 0x00D8;
-	_regs->HL = 0x014D;
-	_regs->SP = 0xFFFE;
-	
-	memory_write8(0xFF05, 0x00);
-	memory_write8(0xFF06, 0x00);
-	memory_write8(0xFF07, 0x00);
-	memory_write8(0xFF10, 0x80);
-	memory_write8(0xFF11, 0xBF);
-	memory_write8(0xFF12, 0xF3);	
-	memory_write8(0xFF14, 0xBF);
-	memory_write8(0xFF16, 0x3F);
-	memory_write8(0xFF17, 0x00);
-	memory_write8(0xFF19, 0xBF);
-	memory_write8(0xFF1A, 0x7F);
-	memory_write8(0xFF1B, 0xFF);
-	memory_write8(0xFF1C, 0x9F);
-	memory_write8(0xFF1E, 0xBF);
-	memory_write8(0xFF20, 0xFF);
-	memory_write8(0xFF21, 0x00);
-	memory_write8(0xFF22, 0x00);
-	memory_write8(0xFF23, 0xBF);
-	memory_write8(0xFF24, 0x77);
-	memory_write8(0xFF25, 0xF3);
-	memory_write8(0xFF26, 0x00); // TODO: This value depends on system
-	memory_write8(0xFF40, 0x91);
-	memory_write8(0xFF42, 0x00);
-	memory_write8(0xFF43, 0x00);
-	memory_write8(0xFF45, 0x00);
-	memory_write8(0xFF47, 0xFC);
-	memory_write8(0xFF48, 0xFF);
-	memory_write8(0xFF49, 0xFF);
-	memory_write8(0xFF4A, 0x00);
-	memory_write8(0xFF4B, 0x00);
-	memory_write8(0xFFFF, 0x00);
-	
-	rom_set_preamble();
-	
-	_regs->PC = 0x100;
 }
 
 /**

@@ -2,10 +2,12 @@
 #include "emulator.h"
 #include "cpu.h"
 
+static void splashScreen();
+
 static SDL_Renderer * renderer;
 static SDL_Window * window;
 
-void graphics_init(char * window_title) {
+void graphics_init(char * window_title) {	
 	SDL_Init(SDL_INIT_VIDEO);
 	SDL_CreateWindowAndRenderer(
 		LCD_SCREEN_WIDTH * GRAPHICS_SCALE,
@@ -15,16 +17,20 @@ void graphics_init(char * window_title) {
 	);
 	SDL_SetWindowTitle(window, window_title);
 	
-	graphics_setColor(0, 0, 0, 255);
-	graphics_clearScreen();
-	
-	graphics_setColor(255, 255, 255, 255);
+	// Splash screen before loading
+	splashScreen();
 }
 
 void graphics_destroy() {
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
+}
+
+void graphics_screen_off() {
+	graphics_setColor(0, 0, 0, 255);
+	graphics_clearScreen();
+	graphics_render();
 }
 
 void graphics_setColor(int r, int g, int b, int a) {
@@ -63,4 +69,18 @@ void graphics_update() {
 			cpu_state.running = 0;
 			break;
 	}
+}
+
+static void splashScreen() {
+	float gradient;
+	
+	graphics_clearScreen();
+	gradient = 255.0 / LCD_SCREEN_WIDTH;
+	for(int i = 0, c; i < LCD_SCREEN_HEIGHT; i++) {
+		c = i * gradient;
+		graphics_setColor(64, c, c, 0);
+		for(int j = 0; j < LCD_SCREEN_WIDTH; j++)
+			graphics_drawPixel(j, i);
+	}
+	graphics_render();
 }

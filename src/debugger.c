@@ -23,14 +23,14 @@ void sig_handler(int sig) {
 
 void debugger_init() {
 	settings.number_breakpoints = 0;
-	settings.breakpoints[settings.number_breakpoints++] = 0x000;
-	settings.breakpoints[settings.number_breakpoints++] = 0x100;
+	settings.breakpoints[settings.number_breakpoints++] = 0x0000;
+	//settings.breakpoints[settings.number_breakpoints++] = 0x100;
 }
 
 void debugger_loop() {
 	FILE * fp;
-	char c;
-	short s;
+	unsigned char c;
+	unsigned short s;
 	
 	char * line;
 	size_t line_size;
@@ -60,7 +60,7 @@ void debugger_loop() {
 		case 'x':
 			// eXamine memory
 			s = readNumber(++line);
-			c = ((char*)memory_dump())[(unsigned short)s];
+			c = ((char*)memory_dump())[s];
 			printf("$%04x:\t$%04x\n", s, c);
 			break;
 		case 'b':

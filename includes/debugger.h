@@ -9,8 +9,8 @@
 #define DEBUG_DUMP_FILENAME "mem_dump.dat"
 
 struct debugger_settings {
-	short number_breakpoints;
-	short breakpoints[128];
+	unsigned short number_breakpoints;
+	unsigned short breakpoints[128];
 };
 
 void debugger_init();
