@@ -1,4 +1,4 @@
-#ifndef __DEBUGGER_H
+#if !defined(__DEBUGGER_H) && defined(DISASSEMBLE)
 #define __DEBUGGER_H
 
 #include <stdlib.h>

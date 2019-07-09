@@ -1,3 +1,5 @@
+#ifdef DISASSEMBLE
+
 #include "debugger.h"
 #include "cpu.h"
 #include "memory.h"
@@ -157,3 +159,5 @@ static void debugger_continue() {
 		cpu_step();
 	}
 }
+
+#endif /* DISASSEBLE */

@@ -47,10 +47,11 @@ static const char bootstrap_code[256] = {
 	Mapping for all memory regions
 	Base is inclusive, bound is not
 	If region not found here, revert to default behavior
+
+	NOTE: FIND WAY TO SAVE LOCKED REGIONS
 */
 #define MEMORY_REGIONS_LEN 1
-static struct memory_region
-memory_regions[MEMORY_REGIONS_LEN] = {
+static struct memory_region memory_regions[MEMORY_REGIONS_LEN] = {
 	// IO PORTS
 	{
 		.base=0xFF00, .bound=0xFF4C,
@@ -59,8 +60,7 @@ memory_regions[MEMORY_REGIONS_LEN] = {
 	}
 };
 #define MEMORY_LOCKED_REGIONS_LEN 1
-static struct memory_locked_region
-memory_locked_regions[MEMORY_LOCKED_REGIONS_LEN] = {
+static struct memory_locked_region memory_locked_regions[MEMORY_LOCKED_REGIONS_LEN] = {
 	// Anything not HRAM
 	{
 		.base=0x0000, .bound=0xFF80, .rwe_lock=0x00

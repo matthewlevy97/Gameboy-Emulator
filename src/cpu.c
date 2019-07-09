@@ -222,7 +222,7 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			_regs->FLAG = FLAG_COMPUTE_DEC(_regs->B) | GET_BIT(_regs->FLAG, C_FLAG);
 			cycles = 4;
 #ifdef DISASSEMBLE
-			sprintf(disassembly, "DEC B");
+			sprintf(disassembly, "DEC B %d", _regs->B);
 #endif
 			break;
 		case 0x06:
@@ -1652,7 +1652,176 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			sprintf(disassembly, "SUB C");
 #endif			
 			break;
-		
+		case 0x98:
+			// SBC A, B
+			tmp_s = _regs->A;
+			tmp_s -= ((_regs->FLAG >> C_FLAG) & 0x1);
+			tmp_s -= _regs->B;
+			_regs->A = tmp_s;
+			
+			// Z_FLAG and N_FLAG
+			_regs->FLAG = ((tmp_s ? 1 : 0)<<Z_FLAG) |
+					 (1<<N_FLAG);
+			
+			// C_FLAG
+			if(tmp_s < 0x00)
+				_regs->FLAG |= (1 << C_FLAG);
+			
+			// H_FLAG
+			if(HALF_CARRY_SUB(_regs->A, _regs->B))
+				_regs->FLAG |= (1 << H_FLAG);
+					
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SBC A, B");
+#endif			
+			break;
+		case 0x99:
+			// SBC A, C
+			tmp_s = _regs->A;
+			tmp_s -= ((_regs->FLAG >> C_FLAG) & 0x1);
+			tmp_s -= _regs->C;
+			_regs->A = tmp_s;
+			
+			// Z_FLAG and N_FLAG
+			_regs->FLAG = ((tmp_s ? 1 : 0)<<Z_FLAG) |
+					 (1<<N_FLAG);
+			
+			// C_FLAG
+			if(tmp_s < 0x00)
+				_regs->FLAG |= (1 << C_FLAG);
+			
+			// H_FLAG
+			if(HALF_CARRY_SUB(_regs->A, _regs->B))
+				_regs->FLAG |= (1 << H_FLAG);
+					
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SBC A, C");
+#endif			
+			break;
+		case 0x9A:
+			// SBC A, D
+			tmp_s = _regs->A;
+			tmp_s -= ((_regs->FLAG >> C_FLAG) & 0x1);
+			tmp_s -= _regs->D;
+			_regs->A = tmp_s;
+			
+			// Z_FLAG and N_FLAG
+			_regs->FLAG = ((tmp_s ? 1 : 0)<<Z_FLAG) |
+					 (1<<N_FLAG);
+			
+			// C_FLAG
+			if(tmp_s < 0x00)
+				_regs->FLAG |= (1 << C_FLAG);
+			
+			// H_FLAG
+			if(HALF_CARRY_SUB(_regs->A, _regs->B))
+				_regs->FLAG |= (1 << H_FLAG);
+					
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SBC A, D");
+#endif			
+			break;
+		case 0x9B:
+			// SBC A, E
+			tmp_s = _regs->A;
+			tmp_s -= ((_regs->FLAG >> C_FLAG) & 0x1);
+			tmp_s -= _regs->E;
+			_regs->A = tmp_s;
+			
+			// Z_FLAG and N_FLAG
+			_regs->FLAG = ((tmp_s ? 1 : 0)<<Z_FLAG) |
+					 (1<<N_FLAG);
+			
+			// C_FLAG
+			if(tmp_s < 0x00)
+				_regs->FLAG |= (1 << C_FLAG);
+			
+			// H_FLAG
+			if(HALF_CARRY_SUB(_regs->A, _regs->B))
+				_regs->FLAG |= (1 << H_FLAG);
+					
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SBC A, E");
+#endif			
+			break;
+		case 0x9C:
+			// SBC A, H
+			tmp_s = _regs->A;
+			tmp_s -= ((_regs->FLAG >> C_FLAG) & 0x1);
+			tmp_s -= _regs->H;
+			_regs->A = tmp_s;
+			
+			// Z_FLAG and N_FLAG
+			_regs->FLAG = ((tmp_s ? 1 : 0)<<Z_FLAG) |
+					 (1<<N_FLAG);
+			
+			// C_FLAG
+			if(tmp_s < 0x00)
+				_regs->FLAG |= (1 << C_FLAG);
+			
+			// H_FLAG
+			if(HALF_CARRY_SUB(_regs->A, _regs->B))
+				_regs->FLAG |= (1 << H_FLAG);
+					
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SBC A, H");
+#endif			
+			break;
+		case 0x9D:
+			// SBC A, L
+			tmp_s = _regs->A;
+			tmp_s -= ((_regs->FLAG >> C_FLAG) & 0x1);
+			tmp_s -= _regs->L;
+			_regs->A = tmp_s;
+			
+			// Z_FLAG and N_FLAG
+			_regs->FLAG = ((tmp_s ? 1 : 0)<<Z_FLAG) |
+					 (1<<N_FLAG);
+			
+			// C_FLAG
+			if(tmp_s < 0x00)
+				_regs->FLAG |= (1 << C_FLAG);
+			
+			// H_FLAG
+			if(HALF_CARRY_SUB(_regs->A, _regs->B))
+				_regs->FLAG |= (1 << H_FLAG);
+					
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SBC A, L");
+#endif			
+			break;
+		case 0x9E:
+			// SBC A, B
+			tmp_c = memory_read8(_regs->HL);
+			tmp_s = _regs->A;
+			tmp_s -= ((_regs->FLAG >> C_FLAG) & 0x1);
+			tmp_s -= tmp_c;
+			_regs->A = tmp_s;
+			
+			// Z_FLAG and N_FLAG
+			_regs->FLAG = ((tmp_s ? 1 : 0)<<Z_FLAG) |
+					 (1<<N_FLAG);
+			
+			// C_FLAG
+			if(tmp_s < 0x00)
+				_regs->FLAG |= (1 << C_FLAG);
+			
+			// H_FLAG
+			if(HALF_CARRY_SUB(_regs->A, _regs->B))
+				_regs->FLAG |= (1 << H_FLAG);
+					
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SBC A, $%02x", tmp_c);
+#endif			
+			break;
+
 		case 0xA0:
 			// AND B
 			_regs->A &= _regs->B;
@@ -1879,6 +2048,54 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			sprintf(disassembly, "OR A");
 #endif
 			break;
+		case 0xB8:
+			// CP B
+			do_cp(_regs->B);
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "CP B");
+#endif
+			break;
+		case 0xB9:
+			// CP C
+			do_cp(_regs->C);
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "CP C");
+#endif
+			break;
+		case 0xBA:
+			// CP D
+			do_cp(_regs->D);
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "CP D");
+#endif
+			break;
+		case 0xBB:
+			// CP E
+			do_cp(_regs->E);
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "CP E");
+#endif
+			break;
+		case 0xBC:
+			// CP H
+			do_cp(_regs->H);
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "CP H");
+#endif
+			break;
+		case 0xBD:
+			// CP L
+			do_cp(_regs->L);
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "CP L");
+#endif
+			break;
 		case 0xBE:
 			// CP (HL)
 			tmp_c = memory_read8(_regs->HL);
@@ -1888,7 +2105,15 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			sprintf(disassembly, "CP (HL)");
 #endif
 			break;
-		
+		case 0xBF:
+			// CP A
+			do_cp(_regs->A);
+			cycles = 4;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "CP A");
+#endif
+			break;
+
 		case 0xC0:
 			// RET NZ
 			if(!(_regs->FLAG >> Z_FLAG)) {
@@ -1907,6 +2132,18 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			cycles = 12;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "POP BC");
+#endif
+			break;
+		case 0xC2:
+			// JP NZ, nn
+			tmp_s = memory_read16(_regs->PC);
+			_regs->PC += 2;
+			if(!(_regs->FLAG >> Z_FLAG)) {
+				_regs->PC = tmp_s;
+			}
+			cycles = 12;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "JP NZ, $%4x", tmp_s);
 #endif
 			break;
 		case 0xC3:
@@ -1979,6 +2216,18 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			sprintf(disassembly, "RET Z");
 #endif
 			break;
+		case 0xCA:
+			// JP Z, nn
+			tmp_s = memory_read16(_regs->PC);
+			_regs->PC += 2;
+			if(_regs->FLAG >> Z_FLAG) {
+				_regs->PC = tmp_s;
+			}
+			cycles = 12;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "JP Z, $%4x", tmp_s);
+#endif
+			break;
 		case 0xCB:
 			// Prefixed opcode
 			opcode = memory_read8(_regs->PC++);
@@ -2014,7 +2263,7 @@ static unsigned char parse_opcode(unsigned char opcode) {
 		
 		case 0xD0:
 			// RET NC
-			if(!(_regs->FLAG >> C_FLAG)) {
+			if(!((_regs->FLAG >> C_FLAG) & 0x1)) {
 				_regs->PC = memory_read16(_regs->SP);
 				_regs->SP += 2;
 			}
@@ -2030,6 +2279,18 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			cycles = 12;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "POP DE");
+#endif
+			break;
+		case 0xD2:
+			// JP NC, nn
+			tmp_s = memory_read16(_regs->PC);
+			_regs->PC += 2;
+			if(!((_regs->FLAG >> C_FLAG) & 0x1)) {
+				_regs->PC = tmp_s;
+			}
+			cycles = 12;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "JP NC, $%4x", tmp_s);
 #endif
 			break;
 		case 0xD5:
@@ -2076,7 +2337,7 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			break;
 		case 0xD8:
 			// RET C
-			if(_regs->FLAG >> C_FLAG) {
+			if((_regs->FLAG >> C_FLAG) & 0x1) {
 				_regs->PC = memory_read16(_regs->SP);
 				_regs->SP += 2;
 			}
@@ -2098,6 +2359,45 @@ static unsigned char parse_opcode(unsigned char opcode) {
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "RETI: $%04x", _regs->PC);
 #endif
+			break;
+		case 0xDA:
+			// JP C, nn
+			tmp_s = memory_read16(_regs->PC);
+			_regs->PC += 2;
+			if((_regs->FLAG >> C_FLAG) & 0x1) {
+				_regs->PC = tmp_s;
+			}
+			cycles = 12;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "JP C, $%4x", tmp_s);
+#endif
+			break;
+		case 0xDE:
+		//
+			// SBC A, n
+			tmp_s = _regs->A;
+			tmp_s -= memory_read16(_regs->SP);
+			_regs->SP += 2;
+			tmp_s -= ((_regs->FLAG >> C_FLAG) & 0x1);
+
+			_regs->A = tmp_s;
+			
+			// Z_FLAG and N_FLAG
+			_regs->FLAG = ((tmp_s ? 1 : 0)<<Z_FLAG) |
+					 (1<<N_FLAG);
+			
+			// C_FLAG
+			if(tmp_s < 0x00)
+				_regs->FLAG |= (1 << C_FLAG);
+			
+			// H_FLAG
+			if(HALF_CARRY_SUB(_regs->A, _regs->B))
+				_regs->FLAG |= (1 << H_FLAG);
+					
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SBC A, $%04x", tmp_s);
+#endif			
 			break;
 		case 0xDF:
 			// RST 0x18
@@ -2243,6 +2543,36 @@ static unsigned char parse_opcode(unsigned char opcode) {
 			sprintf(disassembly, "RST $30");
 #endif
 			break;
+		case 0xF8:
+			// LD HL, (SP+n)
+			// LDHL SP, n
+			tmp_c = memory_read8(_regs->PC++);
+			_regs->HL = _regs->SP + tmp_c;
+			
+			// Z_FLAG and N_FLAG - RESET
+			_regs->FLAG = 0;
+			
+			// C_FLAG
+			if(_regs->HL > 0xFF)
+				_regs->FLAG |= (1 << C_FLAG);
+			
+			// H_FLAG
+			if(HALF_CARRY_ADD16(_regs->SP, tmp_c))
+				_regs->FLAG |= (1 << H_FLAG);
+			
+			cycles = 12;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LDHL SP, n");
+#endif
+			break;
+		case 0xF9:
+			// LD SP, HL
+			_regs->SP = _regs->HL;
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "LD SP, HL");
+#endif
+			break;
 		case 0xFA:
 			// LD A, (nn)
 			tmp_s = memory_read16(_regs->PC);
@@ -2262,12 +2592,13 @@ static unsigned char parse_opcode(unsigned char opcode) {
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "EI");
 #endif
+			break;
 		case 0xFE:
 			// CP n
 			tmp_c = memory_read8(_regs->PC++);
 			do_cp(tmp_c);
 #ifdef DISASSEMBLE
-			sprintf(disassembly, "CP $%02x", tmp_c);
+			sprintf(disassembly, "CP $%02x $%02x", tmp_c, _regs->A);
 #endif		
 			cycles = 8;
 			break;
@@ -2286,6 +2617,7 @@ static unsigned char parse_opcode(unsigned char opcode) {
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "Unimplemented: 0x%02x", opcode);
 #endif
+			_regs->PC--;
 			cycles = 0;
 	}
 	
@@ -2469,7 +2801,7 @@ static unsigned char parse_prefixed_opcode(unsigned char opcode) {
 			memory_write8(_regs->HL, tmp_c);
 			_regs->FLAG = (tmp_c ? 0 : 1<<Z_FLAG);
 			cycles = 8;
-#ifdef disassemble
+#ifdef DISASSEMBLE
 			sprintf(disassembly, "SWAP (HL)");
 #endif
 			break;
@@ -2479,15 +2811,145 @@ static unsigned char parse_prefixed_opcode(unsigned char opcode) {
 			_regs->A = ((tmp_c & 0xF)<<4 | (tmp_c & 0xF0)>>4);
 			_regs->FLAG = (_regs->A ? 0 : 1<<Z_FLAG);
 			cycles = 8;
-#ifdef disassemble
+#ifdef DISASSEMBLE
 			sprintf(disassembly, "SWAP A");
 #endif
 			break;
 		
+		case 0x60:
+			// BIT 4, B
+			DO_BITS_OPCODE(_regs->B, 4);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "BIT 4, B");
+#endif
+			break;
+		case 0x61:
+			// BIT 4, C
+			DO_BITS_OPCODE(_regs->C, 4);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "BIT 4, C");
+#endif
+			break;
+		case 0x62:
+			// BIT 4, D
+			DO_BITS_OPCODE(_regs->D, 4);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "BIT 4, D");
+#endif
+			break;
+		case 0x63:
+			// BIT 4, E
+			DO_BITS_OPCODE(_regs->E, 4);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "BIT 4, E");
+#endif
+			break;
+		case 0x64:
+			// BIT 4, H
+			DO_BITS_OPCODE(_regs->H, 4);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "BIT 4, H");
+#endif
+			break;
+		case 0x65:
+			// BIT 4, L
+			DO_BITS_OPCODE(_regs->L, 4);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "BIT 4, L");
+#endif
+			break;
+		case 0x66:
+			// BIT 4, (HL)
+			tmp_c = memory_read8(_regs->HL);
+			DO_BITS_OPCODE(tmp_c, 4);
+			cycles = 16;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "BIT 4, (HL)");
+#endif
+			break;
+		case 0x67:
+			// BIT 4, A
+			DO_BITS_OPCODE(_regs->A, 4);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "BIT 4, A");
+#endif
+			break;
+		case 0x68:
+			// BIT 5, B
+			DO_BITS_OPCODE(_regs->B, 5);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "BIT 5, B");
+#endif
+			break;
+		case 0x69:
+			// BIT 5, C
+			DO_BITS_OPCODE(_regs->C, 5);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "BIT 5, C");
+#endif
+			break;
+		case 0x6A:
+			// BIT 5, D
+			DO_BITS_OPCODE(_regs->D, 5);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "BIT 5, D");
+#endif
+			break;
+		case 0x6B:
+			// BIT 5, E
+			DO_BITS_OPCODE(_regs->E, 5);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "BIT 5, E");
+#endif
+			break;
+		case 0x6C:
+			// BIT 5, H
+			DO_BITS_OPCODE(_regs->H, 5);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "BIT 5, H");
+#endif
+			break;
+		case 0x6D:
+			// BIT 5, L
+			DO_BITS_OPCODE(_regs->L, 5);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "BIT 5, L");
+#endif
+			break;
+		case 0x6E:
+			// BIT 5, (HL)
+			tmp_c = memory_read8(_regs->HL);
+			DO_BITS_OPCODE(tmp_c, 5);
+			cycles = 16;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "BIT 5, (HL)");
+#endif
+			break;
+		case 0x6F:
+			// BIT 5, A
+			DO_BITS_OPCODE(_regs->A, 5);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "BIT 5, A");
+#endif
+			break;
+
 		case 0x70:
 			// BIT 6, B
-			tmp_c = (GET_BIT(_regs->B, 7) << Z_FLAG);
-			_regs->FLAG = tmp_c & FLAG_PRECOMPUTE_BIT;
+			DO_BITS_OPCODE(_regs->B, 6);
 			cycles = 8;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "BIT 7, B");
@@ -2495,8 +2957,7 @@ static unsigned char parse_prefixed_opcode(unsigned char opcode) {
 			break;
 		case 0x71:
 			// BIT 6, C
-			tmp_c = (GET_BIT(_regs->C, 6) << Z_FLAG);
-			_regs->FLAG = tmp_c & FLAG_PRECOMPUTE_BIT;
+			DO_BITS_OPCODE(_regs->C, 6);
 			cycles = 8;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "BIT 6, C");
@@ -2504,8 +2965,7 @@ static unsigned char parse_prefixed_opcode(unsigned char opcode) {
 			break;
 		case 0x72:
 			// BIT 6, D
-			tmp_c = (GET_BIT(_regs->D, 6) << Z_FLAG);
-			_regs->FLAG = tmp_c & FLAG_PRECOMPUTE_BIT;
+			DO_BITS_OPCODE(_regs->D, 6);
 			cycles = 8;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "BIT 6, D");
@@ -2513,8 +2973,7 @@ static unsigned char parse_prefixed_opcode(unsigned char opcode) {
 			break;
 		case 0x73:
 			// BIT 6, E
-			tmp_c = (GET_BIT(_regs->E, 6) << Z_FLAG);
-			_regs->FLAG = tmp_c & FLAG_PRECOMPUTE_BIT;
+			DO_BITS_OPCODE(_regs->E, 6);
 			cycles = 8;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "BIT 6, E");
@@ -2522,8 +2981,7 @@ static unsigned char parse_prefixed_opcode(unsigned char opcode) {
 			break;
 		case 0x74:
 			// BIT 6, H
-			tmp_c = (GET_BIT(_regs->H, 6) << Z_FLAG);
-			_regs->FLAG = tmp_c & FLAG_PRECOMPUTE_BIT;
+			DO_BITS_OPCODE(_regs->H, 6);
 			cycles = 8;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "BIT 6, H");
@@ -2531,8 +2989,7 @@ static unsigned char parse_prefixed_opcode(unsigned char opcode) {
 			break;
 		case 0x75:
 			// BIT 6, L
-			tmp_c = (GET_BIT(_regs->L, 6) << Z_FLAG);
-			_regs->FLAG = tmp_c & FLAG_PRECOMPUTE_BIT;
+			DO_BITS_OPCODE(_regs->L, 6);
 			cycles = 8;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "BIT 6, L");
@@ -2540,8 +2997,7 @@ static unsigned char parse_prefixed_opcode(unsigned char opcode) {
 			break;
 		case 0x77:
 			// BIT 6, A
-			tmp_c = (GET_BIT(_regs->A, 6) << Z_FLAG);
-			_regs->FLAG = tmp_c & FLAG_PRECOMPUTE_BIT;
+			DO_BITS_OPCODE(_regs->A, 6);
 			cycles = 8;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "BIT 6, A");
@@ -2549,8 +3005,7 @@ static unsigned char parse_prefixed_opcode(unsigned char opcode) {
 			break;
 		case 0x78:
 			// BIT 7, B
-			tmp_c = (GET_BIT(_regs->B, 7) << Z_FLAG);
-			_regs->FLAG = tmp_c & FLAG_PRECOMPUTE_BIT;
+			DO_BITS_OPCODE(_regs->B, 7);
 			cycles = 8;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "BIT 7, B");
@@ -2558,8 +3013,7 @@ static unsigned char parse_prefixed_opcode(unsigned char opcode) {
 			break;
 		case 0x79:
 			// BIT 7, C
-			tmp_c = (GET_BIT(_regs->C, 7) << Z_FLAG);
-			_regs->FLAG = tmp_c & FLAG_PRECOMPUTE_BIT;
+			DO_BITS_OPCODE(_regs->C, 7);
 			cycles = 8;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "BIT 7, C");
@@ -2567,8 +3021,7 @@ static unsigned char parse_prefixed_opcode(unsigned char opcode) {
 			break;
 		case 0x7A:
 			// BIT 7, D
-			tmp_c = (GET_BIT(_regs->D, 7) << Z_FLAG);
-			_regs->FLAG = tmp_c & FLAG_PRECOMPUTE_BIT;
+			DO_BITS_OPCODE(_regs->D, 7);
 			cycles = 8;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "BIT 7, D");
@@ -2576,8 +3029,7 @@ static unsigned char parse_prefixed_opcode(unsigned char opcode) {
 			break;
 		case 0x7B:
 			// BIT 7, E
-			tmp_c = (GET_BIT(_regs->E, 7) << Z_FLAG);
-			_regs->FLAG = tmp_c & FLAG_PRECOMPUTE_BIT;
+			DO_BITS_OPCODE(_regs->E, 7);
 			cycles = 8;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "BIT 7, E");
@@ -2585,8 +3037,7 @@ static unsigned char parse_prefixed_opcode(unsigned char opcode) {
 			break;
 		case 0x7C:
 			// BIT 7, H
-			tmp_c = (GET_BIT(_regs->H, 7) << Z_FLAG);
-			_regs->FLAG = tmp_c & FLAG_PRECOMPUTE_BIT;
+			DO_BITS_OPCODE(_regs->H, 7);;
 			cycles = 8;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "BIT 7, H");
@@ -2595,8 +3046,7 @@ static unsigned char parse_prefixed_opcode(unsigned char opcode) {
 		case 0x7D:
 			// BIT 7, (HL)
 			tmp_c = memory_read8(_regs->HL);
-			tmp_c = (GET_BIT(tmp_c, 7) << Z_FLAG);
-			_regs->FLAG = tmp_c & FLAG_PRECOMPUTE_BIT;
+			DO_BITS_OPCODE(tmp_c, 7);
 			cycles = 16;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "BIT 7, (HL)");
@@ -2604,11 +3054,542 @@ static unsigned char parse_prefixed_opcode(unsigned char opcode) {
 			break;
 		case 0x7F:
 			// BIT 7, A
-			tmp_c = (GET_BIT(_regs->A, 7) << Z_FLAG);
-			_regs->FLAG = tmp_c & FLAG_PRECOMPUTE_BIT;
+			DO_BITS_OPCODE(_regs->A, 7);
 			cycles = 8;
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "BIT 7, A");
+#endif
+			break;
+
+		case 0xC0:
+			// SET 0, B
+			SET_BIT(_regs->B, 0);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 0, B");
+#endif
+			break;
+		case 0xC1:
+			// SET 0, C
+			SET_BIT(_regs->C, 0);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 0, C");
+#endif
+			break;
+		case 0xC2:
+			// SET 0, D
+			SET_BIT(_regs->D, 0);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 0, D");
+#endif
+			break;
+		case 0xC3:
+			// SET 0, E
+			SET_BIT(_regs->E, 0);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 0, E");
+#endif
+			break;
+		case 0xC4:
+			// SET 0, H
+			SET_BIT(_regs->H, 0);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 0, H");
+#endif
+			break;
+		case 0xC5:
+			// SET 0, L
+			SET_BIT(_regs->L, 0);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 0, L");
+#endif
+			break;
+		case 0xC6:
+			// SET 0, (HL)
+			tmp_c = memory_read8(_regs->HL);
+			SET_BIT(tmp_c, 0);
+			memory_write8(_regs->HL, tmp_c);
+			cycles = 16;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 0, (HL)");
+#endif
+			break;
+		case 0xC7:
+			// SET 0, A
+			SET_BIT(_regs->A, 0);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 0, A");
+#endif
+			break;
+		case 0xC8:
+			// SET 1, B
+			SET_BIT(_regs->B, 1);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 1, B");
+#endif
+			break;
+		case 0xC9:
+			// SET 1, C
+			SET_BIT(_regs->C, 1);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 1, C");
+#endif
+			break;
+		case 0xCA:
+			// SET 1, D
+			SET_BIT(_regs->D, 1);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 1, D");
+#endif
+			break;
+		case 0xCB:
+			// SET 1, E
+			SET_BIT(_regs->E, 1);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 1, E");
+#endif
+			break;
+		case 0xCC:
+			// SET 1, H
+			SET_BIT(_regs->H, 1);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 1, H");
+#endif
+			break;
+		case 0xCD:
+			// SET 1, L
+			SET_BIT(_regs->L, 1);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 1, L");
+#endif
+			break;
+		case 0xCE:
+			// SET 1, (HL)
+			tmp_c = memory_read8(_regs->HL);
+			SET_BIT(tmp_c, 1);
+			memory_write8(_regs->HL, tmp_c);
+			cycles = 16;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 1, (HL)");
+#endif
+			break;
+		case 0xCF:
+			// SET 1, A
+			SET_BIT(_regs->A, 1);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 1, A");
+#endif
+			break;
+
+		case 0xD0:
+			// SET 2, B
+			SET_BIT(_regs->B, 2);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 2, B");
+#endif
+			break;
+		case 0xD1:
+			// SET 2, C
+			SET_BIT(_regs->C, 2);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 2, C");
+#endif
+			break;
+		case 0xD2:
+			// SET 2, D
+			SET_BIT(_regs->D, 2);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 2, D");
+#endif
+			break;
+		case 0xD3:
+			// SET 2, E
+			SET_BIT(_regs->E, 2);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 2, E");
+#endif
+			break;
+		case 0xD4:
+			// SET 2, H
+			SET_BIT(_regs->H, 2);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 2, H");
+#endif
+			break;
+		case 0xD5:
+			// SET 2, L
+			SET_BIT(_regs->L, 2);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 2, L");
+#endif
+			break;
+		case 0xD6:
+			// SET 2, (HL)
+			tmp_c = memory_read8(_regs->HL);
+			SET_BIT(tmp_c, 2);
+			memory_write8(_regs->HL, tmp_c);
+			cycles = 16;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 2, (HL)");
+#endif
+			break;
+		case 0xD7:
+			// SET 2, A
+			SET_BIT(_regs->A, 2);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 2, A");
+#endif
+			break;
+		case 0xD8:
+			// SET 3, B
+			SET_BIT(_regs->B, 3);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 3, B");
+#endif
+			break;
+		case 0xD9:
+			// SET 3, C
+			SET_BIT(_regs->C, 3);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 3, C");
+#endif
+			break;
+		case 0xDA:
+			// SET 3, D
+			SET_BIT(_regs->D, 3);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 3, D");
+#endif
+			break;
+		case 0xDB:
+			// SET 3, E
+			SET_BIT(_regs->E, 3);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 3, E");
+#endif
+			break;
+		case 0xDC:
+			// SET 3, H
+			SET_BIT(_regs->H, 3);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 3, H");
+#endif
+			break;
+		case 0xDD:
+			// SET 3, L
+			SET_BIT(_regs->L, 3);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 3, L");
+#endif
+			break;
+		case 0xDE:
+			// SET 3, (HL)
+			tmp_c = memory_read8(_regs->HL);
+			SET_BIT(tmp_c, 3);
+			memory_write8(_regs->HL, tmp_c);
+			cycles = 16;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 3, (HL)");
+#endif
+			break;
+		case 0xDF:
+			// SET 3, A
+			SET_BIT(_regs->A, 3);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 3, A");
+#endif
+			break;
+
+		case 0xE0:
+			// SET 4, B
+			SET_BIT(_regs->B, 4);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 6, 4");
+#endif
+			break;
+		case 0xE1:
+			// SET 4, C
+			SET_BIT(_regs->C, 4);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 4, C");
+#endif
+			break;
+		case 0xE2:
+			// SET 4, D
+			SET_BIT(_regs->D, 4);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 4, D");
+#endif
+			break;
+		case 0xE3:
+			// SET 4, E
+			SET_BIT(_regs->E, 4);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 4, E");
+#endif
+			break;
+		case 0xE4:
+			// SET 4, H
+			SET_BIT(_regs->H, 4);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 4, H");
+#endif
+			break;
+		case 0xE5:
+			// SET 4, L
+			SET_BIT(_regs->L, 4);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 4, L");
+#endif
+			break;
+		case 0xE6:
+			// SET 4, (HL)
+			tmp_c = memory_read8(_regs->HL);
+			SET_BIT(tmp_c, 4);
+			memory_write8(_regs->HL, tmp_c);
+			cycles = 16;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 4, (HL)");
+#endif
+			break;
+		case 0xE7:
+			// SET 4, A
+			SET_BIT(_regs->A, 4);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 4, A");
+#endif
+			break;
+		case 0xE8:
+			// SET 5, B
+			SET_BIT(_regs->B, 5);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 5, B");
+#endif
+			break;
+		case 0xE9:
+			// SET 5, C
+			SET_BIT(_regs->C, 5);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 5, C");
+#endif
+			break;
+		case 0xEA:
+			// SET 5, D
+			SET_BIT(_regs->D, 5);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 5, D");
+#endif
+			break;
+		case 0xEB:
+			// SET 5, E
+			SET_BIT(_regs->E, 5);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 5, E");
+#endif
+			break;
+		case 0xEC:
+			// SET 5, H
+			SET_BIT(_regs->H, 5);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 5, H");
+#endif
+			break;
+		case 0xED:
+			// SET 5, L
+			SET_BIT(_regs->L, 5);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 5, L");
+#endif
+			break;
+		case 0xEE:
+			// SET 5, (HL)
+			tmp_c = memory_read8(_regs->HL);
+			SET_BIT(tmp_c, 5);
+			memory_write8(_regs->HL, tmp_c);
+			cycles = 16;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 5, (HL)");
+#endif
+			break;
+		case 0xEF:
+			// SET 5, A
+			SET_BIT(_regs->A, 5);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 5, A");
+#endif
+			break;
+
+		case 0xF0:
+			// SET 6, B
+			SET_BIT(_regs->B, 6);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 6, B");
+#endif
+			break;
+		case 0xF1:
+			// SET 6, C
+			SET_BIT(_regs->C, 6);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 6, C");
+#endif
+			break;
+		case 0xF2:
+			// SET 6, D
+			SET_BIT(_regs->D, 6);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 6, D");
+#endif
+			break;
+		case 0xF3:
+			// SET 6, E
+			SET_BIT(_regs->E, 6);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 6, E");
+#endif
+			break;
+		case 0xF4:
+			// SET 6, H
+			SET_BIT(_regs->H, 6);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 6, H");
+#endif
+			break;
+		case 0xF5:
+			// SET 6, L
+			SET_BIT(_regs->L, 6);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 6, L");
+#endif
+			break;
+		case 0xF6:
+			// SET 6, (HL)
+			tmp_c = memory_read8(_regs->HL);
+			SET_BIT(tmp_c, 6);
+			memory_write8(_regs->HL, tmp_c);
+			cycles = 16;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 6, (HL)");
+#endif
+			break;
+		case 0xF7:
+			// SET 6, A
+			SET_BIT(_regs->A, 6);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 6, A");
+#endif
+			break;
+		case 0xF8:
+			// SET 7, B
+			SET_BIT(_regs->B, 7);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 7, B");
+#endif
+			break;
+		case 0xF9:
+			// SET 7, C
+			SET_BIT(_regs->C, 7);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 7, C");
+#endif
+			break;
+		case 0xFA:
+			// SET 7, D
+			SET_BIT(_regs->D, 7);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 7, D");
+#endif
+			break;
+		case 0xFB:
+			// SET 7, E
+			SET_BIT(_regs->E, 7);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 7, E");
+#endif
+			break;
+		case 0xFC:
+			// SET 7, H
+			SET_BIT(_regs->H, 7);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 7, H");
+#endif
+			break;
+		case 0xFD:
+			// SET 7, L
+			SET_BIT(_regs->L, 7);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 7, L");
+#endif
+			break;
+		case 0xFE:
+			// SET 7, (HL)
+			tmp_c = memory_read8(_regs->HL);
+			SET_BIT(tmp_c, 7);
+			memory_write8(_regs->HL, tmp_c);
+			cycles = 16;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 7, (HL)");
+#endif
+			break;
+		case 0xFF:
+			// SET 7, A
+			SET_BIT(_regs->A, 7);
+			cycles = 8;
+#ifdef DISASSEMBLE
+			sprintf(disassembly, "SET 7, A");
 #endif
 			break;
 
@@ -2616,7 +3597,7 @@ static unsigned char parse_prefixed_opcode(unsigned char opcode) {
 #ifdef DISASSEMBLE
 			sprintf(disassembly, "Unimplemented: 0xCB 0x%02x", opcode);
 #endif
-
+			_regs->PC -= 2;
 			cycles = 0;
 	}
 	

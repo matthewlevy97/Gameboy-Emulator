@@ -7,8 +7,8 @@
 Bit manipulation
 */
 #define GET_BIT(src, bit) ((src >> bit) & 0x1)
-#define CLEAR_BIT(src, bit) (src & ~(0x1 << bit))
-#define SET_BIT(src, bit) (src | (0x1 << bit))
+#define CLEAR_BIT(src, bit) (src &= ~(0x1 << bit))
+#define SET_BIT(src, bit) (src |= (0x1 << bit))
 
 /**
 Bit for each flag
@@ -54,6 +54,14 @@ leaving the static changes to be done compile-time
 #define FLAG_PRECOMPUTE_CPL (1 << N_FLAG | 1 << H_FLAG)
 
 /**
+This is the same code, abstracted to here
+*/
+#define DO_BITS_OPCODE(byte, pos) {\
+	tmp_c = (GET_BIT(byte, pos) << Z_FLAG);\
+	_regs->FLAG = tmp_c & FLAG_PRECOMPUTE_BIT;\
+}
+
+/**
 For Flags not able to be precomputed
 */
 // Z - Dynamic, N - Reset, H - Set if carry from bit 3, C - Unchanged
@@ -67,8 +75,7 @@ For Flags not able to be precomputed
 #define FLAG_COMPUTE_DEC(value) (\
 	((!value) << Z_FLAG) |\
 	(1 << N_FLAG) |\
-	((!(((value & 0xF) - 1) & 0xF)) << H_FLAG) |\
-	(1 << C_FLAG)\
+	((!(((value & 0xF) - 1) & 0xF)) << H_FLAG) \
 )
 
 // Z - Dynamic, N - Reset, H - Set, C - Reset
@@ -141,6 +148,7 @@ struct cpu_state {
 	unsigned char running;
 	unsigned char ime; /* 0 - disable interrupts, 1 - enable interrupts */
 	unsigned char halt;
+	short dma_transfer;
 	unsigned long long total_cycles;
 	short lcd_wait_cycles;
 	struct registers registers;

@@ -8,12 +8,15 @@ OUTPUT_DIR  := build
 # -DDEBUG_MEMORY  ->    Display all memory accesses
 # -DDEBUG_LCD     ->    Display information about LCD screen
 # -DDISASSEMBLE   ->    Display all commands executed
-DEBUG_FLAGS := -g -DDISASSEMBLE
+#DEBUG_FLAGS := -g -DDISASSEMBLE
+
+# Breaks code for some reason
+#PROFILE_CODE := -pg
 
 GRAPHICS_LIBRARY := -lSDL2
 
-CFLAGS := -I$(INCLUDE_DIR) $(DEBUG_FLAGS) -Wall -O3
-LFLAGS := $(GRAPHICS_LIBRARY)
+CFLAGS := -I$(INCLUDE_DIR) $(DEBUG_FLAGS) $(PROFILE_CODE) -Wall
+LFLAGS := $(GRAPHICS_LIBRARY) $(PROFILE_CODE)
 
 CFILES := $(wildcard $(SOURCE_DIR)/*.c)
 OBJS   := $(patsubst $(SOURCE_DIR)/%.c, $(OUTPUT_DIR)/%.o, $(CFILES))
@@ -25,7 +28,6 @@ $(PROG_NAME): $(OUTPUT_DIR) $(OBJS)
 
 $(OUTPUT_DIR)/%.o: $(SOURCE_DIR)/%.c
 	$(CC) -c -o $@ $< $(CFLAGS)
-
 $(OUTPUT_DIR):
 	@mkdir $@
 

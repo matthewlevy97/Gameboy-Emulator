@@ -37,17 +37,25 @@ void lcd_dma_transfer(unsigned char val) {
 	memcpy(mem + 0xFE00, mem + (0x100 * val), 0xA0);
 	
 	// Takes 160 (0xA0) cycles to complete
-	
+	cpu_state.dma_transfer = 160;
+
 	// Unlock LRAM
 	memory_lockRegion(LRAM_LOCK, 0);
 }
 
 void lcd_update(unsigned char cycles) {
+	if(cpu_state.dma_transfer > 0) cpu_state.dma_transfer -= cycles;
+
 	// Determine if LCD Display is enabled
+	static char graphics_disabled = 0;
 	if((lcd_registers->lcdc_control >> 7) ^ 0x1) {
-		graphics_screen_off();
+		if(!graphics_disabled) {
+			graphics_screen_off();
+			graphics_disabled = 1;
+		}
 		return;
 	}
+	graphics_disabled = 0;
 	
 	// Determine if enough cycles passed
 	cpu_state.lcd_wait_cycles -= cycles;

@@ -31,11 +31,14 @@ void emulator_init() {
 }
 
 int main(int argc, char ** argv) {
-	int i, debugger;
+	int i;
+	
+#ifdef DISASSEMBLE
+	int debugger;
+	debugger = 0;
+#endif
 	
 	emulator_init();
-	
-	debugger = 0;
 	
 	// Get commane line arguments
 	for(i = 1; i < argc; i++) {
@@ -48,16 +51,20 @@ int main(int argc, char ** argv) {
 		if(!strcmp(argv[i], "-h")) {
 			printf("usage: %s\n", argv[0]);
 			printf("\t-f                  ROM File (.gb)\n");
+#ifdef DISASSEMBLE
 			printf("\t-debug              Start debugger\n");
+#endif
 			printf("\t-ignore-bootloader  Skip bootloader\n");
 			printf("\t-h                  Display this screen\n");
 			return 0;
 		}
-		
+
+#ifdef DISASSEMBLE
 		// Start debugger
 		if(!strcmp(argv[i], "-debug")) {
 			debugger = 1;
 		}
+#endif
 		
 		// Ignore bootloader
 		if(!strcmp(argv[i], "-ignore-bootloader")) {
@@ -65,14 +72,21 @@ int main(int argc, char ** argv) {
 		}
 	}
 	
+#ifdef DISASSEMBLE
 	if(debugger) {
 		debugger_init();
 		debugger_loop();
 	} else {
 		while(cpu_state.running) {
 			cpu_step();
+			printf("$%04x %s\n", disassembly_pc, disassembly);
 		}
 	}
+#else
+	while(cpu_state.running) {
+		cpu_step();
+	}
+#endif
 
 	return 0;
 }
