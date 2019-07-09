@@ -2,6 +2,6 @@
 build/
 emulator
 *.dat
-*.dat
+*.out
 peda*
 .gdb_history
